@@ -1,0 +1,19 @@
+defaults:
+- ../../defaults/act_sac.yaml
+task: transport
+base_policy: act
+chunk_size: 32
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.4.1
+algorithm: sac
+training:
+  lowdim_keys: robot0_eef_pos,robot0_eef_quat,robot0_gripper_qpos,robot1_eef_pos,robot1_eef_quat,robot1_gripper_qpos,object
+  env_horizon_override: 800
+  gamma: 0.999
+  hidden_dims: 2048,2048,2048
+  online_eval_every_env_steps: 200000
+  online_eval_action_mode: both
+  online_eval_n_envs: 4
+  latest_model_save_freq: 100000000
+  latest_model_save_env_freq: 500000

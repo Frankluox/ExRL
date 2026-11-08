@@ -1,0 +1,33 @@
+# Shared training settings for this variant.
+training:
+  physical_obs_clip: 0.0
+  physical_obs_normalization: none
+  action_obs_normalization: none
+  timeout_on_horizon: true
+  total_policy_steps: 100000000
+  warmup_policy_steps: 512
+  utd: 1.0
+  batch_size: 256
+  replay_size: 1000000
+  pipeline: sac_warmstart
+  warmup_transitions: 512
+  initial_critic_updates: 5000
+  warmstart_actor: true
+  eval_episodes: 50
+  n_envs: 4
+  tau: 0.005
+  actor_lr: 5.0e-05
+  critic_lr: 0.0003
+  alpha_lr: 1.0e-05
+  init_alpha: 0.3
+  max_alpha: 0.7
+  cql_alpha: 0.01
+  critic_ensemble_size: 10
+  target_critic_subsample_size: 2
+  target_q_clip_min: -1000.0
+  target_q_clip_max: 0.0
+  actor_target_critic_subsample: true
+  actor_loss_critic_subsample: true
+  decision_runtime: asyncqueue
+  dp_infer_gpus: ''
+  save_freq: 100000000

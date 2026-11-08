@@ -1,0 +1,19 @@
+defaults:
+- ../defaults/act_demo_bc.yaml
+task: lift
+base_policy: act
+chunk_size: 50
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.4.1
+algorithm: q
+training:
+  lowdim_keys: robot0_eef_pos,robot0_eef_quat,robot0_gripper_qpos,object
+  env_horizon_override: 300
+  eval_interval: 30000
+  offline_resume_save_interval_steps: 500000
+  gamma: 0.997
+  hidden_dims: 512,512,512
+  log_every_policy_steps: 960
+  save_freq: 100000000
+  latest_model_save_freq: 500000

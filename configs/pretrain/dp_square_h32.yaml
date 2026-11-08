@@ -1,0 +1,57 @@
+_target_: agent.pretrain.train_diffusion_agent.TrainDiffusionAgent
+name: dp_square
+logdir: outputs/pretrain_dp
+train_dataset_path: assets/square/train.npz
+seed: 44
+device: cuda:0
+env: square
+obs_dim: 23
+action_dim: 7
+denoising_steps: 100
+horizon_steps: 32
+cond_steps: 1
+wandb: null
+train:
+  n_epochs: 20000
+  batch_size: 256
+  learning_rate: 0.0001
+  weight_decay: 1.0e-06
+  lr_scheduler:
+    first_cycle_steps: 20000
+    warmup_steps: 100
+    min_lr: 1.0e-05
+  save_model_freq: 250
+model:
+  _target_: model.diffusion.diffusion.DiffusionModel
+  predict_epsilon: true
+  denoised_clip_value: 1.0
+  network:
+    _target_: model.diffusion.mlp_diffusion.DiffusionMLP
+    time_dim: 32
+    mlp_dims:
+    - 1024
+    - 1024
+    - 1024
+    cond_mlp_dims:
+    - 512
+    - 64
+    residual_style: true
+    cond_dim: 23
+    horizon_steps: 32
+    action_dim: 7
+  horizon_steps: 32
+  obs_dim: 23
+  action_dim: 7
+  denoising_steps: 100
+  device: cuda:0
+  use_ddim: true
+  ddim_steps: 20
+ema:
+  decay: 0.995
+train_dataset:
+  _target_: agent.dataset.sequence.StitchedSequenceDataset
+  dataset_path: ${train_dataset_path}
+  horizon_steps: 32
+  cond_steps: 1
+  device: cuda:0
+env_name: square

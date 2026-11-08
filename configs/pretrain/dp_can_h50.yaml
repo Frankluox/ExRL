@@ -1,0 +1,54 @@
+_target_: agent.pretrain.train_diffusion_agent.TrainDiffusionAgent
+name: dp_can
+logdir: outputs/pretrain_dp
+train_dataset_path: assets/can/train.npz
+seed: 42
+device: cuda:0
+env: can
+obs_dim: 23
+action_dim: 7
+denoising_steps: 100
+horizon_steps: 50
+cond_steps: 1
+wandb: null
+train:
+  n_epochs: 20000
+  batch_size: 256
+  learning_rate: 0.0001
+  weight_decay: 1.0e-06
+  lr_scheduler:
+    first_cycle_steps: 20000
+    warmup_steps: 100
+    min_lr: 1.0e-05
+  save_model_freq: 1000
+model:
+  _target_: model.diffusion.diffusion.DiffusionModel
+  predict_epsilon: true
+  denoised_clip_value: 1.0
+  network:
+    _target_: model.diffusion.mlp_diffusion.DiffusionMLP
+    time_dim: 16
+    mlp_dims:
+    - 512
+    - 512
+    - 512
+    residual_style: true
+    cond_dim: 23
+    horizon_steps: 50
+    action_dim: ${action_dim}
+  horizon_steps: 50
+  obs_dim: ${obs_dim}
+  action_dim: ${action_dim}
+  denoising_steps: 100
+  device: ${device}
+  use_ddim: true
+  ddim_steps: 20
+ema:
+  decay: 0.995
+train_dataset:
+  _target_: agent.dataset.sequence.StitchedSequenceDataset
+  dataset_path: ${train_dataset_path}
+  horizon_steps: ${horizon_steps}
+  cond_steps: ${cond_steps}
+  device: ${device}
+env_name: can

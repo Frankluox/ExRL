@@ -1,0 +1,20 @@
+defaults:
+- ../../defaults/act_online_bc.yaml
+task: transport
+base_policy: act
+chunk_size: 32
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.4.1
+algorithm: q
+training:
+  lowdim_keys: robot0_eef_pos,robot0_eef_quat,robot0_gripper_qpos,robot1_eef_pos,robot1_eef_quat,robot1_gripper_qpos,object
+  env_horizon_override: 800
+  eval_interval: 500000
+  offline_eval_max_decisions: 100000
+  n_envs: 48
+  gamma: 0.997
+  hidden_dims: 2048,2048,2048
+  save_freq: 200000000
+  latest_model_save_freq: 200000000
+  save_best_model: false

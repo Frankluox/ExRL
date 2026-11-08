@@ -1,0 +1,12 @@
+defaults:
+- ../defaults/dp_demo.yaml
+task: can
+base_policy: dp
+chunk_size: 50
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.4.1
+diffusion_training_steps: 100
+algorithm: q
+demonstration_replay: true
+training: {}

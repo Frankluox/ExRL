@@ -1,0 +1,23 @@
+defaults:
+- ../../defaults/act_q.yaml
+task: tool_hang
+base_policy: act
+chunk_size: 32
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.5.1
+algorithm: q
+training:
+  lowdim_keys: robot0_eef_pos,robot0_eef_quat,robot0_gripper_qpos,object
+  env_horizon_override: 800
+  eval_interval: 200000
+  offline_resume_save_interval_steps: 100000
+  offline_eval_max_decisions: 100000
+  n_envs: 4
+  vecenv_start_method: fork
+  gamma: 0.999
+  hidden_dims: 512,512,512
+  log_every_policy_steps: 512
+  save_freq: 100000000
+  latest_model_save_freq: 10000000
+  force_thread_limits: true

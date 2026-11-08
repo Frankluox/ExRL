@@ -1,0 +1,24 @@
+defaults:
+- ../../defaults/dp_online_bc.yaml
+task: transport
+base_policy: dp
+chunk_size: 32
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.4.1
+diffusion_training_steps: 100
+algorithm: q
+training:
+  lowdim_keys: robot0_eef_pos,robot0_eef_quat,robot0_gripper_qpos,robot1_eef_pos,robot1_eef_quat,robot1_gripper_qpos,object
+  env_horizon_override: 800
+  eval_interval: 500000
+  offline_resume_save_interval_steps: 100000000
+  n_envs: 48
+  gamma: 0.999
+  hidden_dims: 2048,2048,2048
+  critic_use_layernorm: true
+  critic_obs_state_mode: dsrl_raw
+  bc_start_after_steps: 0
+  dp_infer_steps: 20
+  ipc_chunk_dtype: fp32
+  latest_model_save_freq: 250000

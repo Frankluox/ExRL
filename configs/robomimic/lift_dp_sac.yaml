@@ -1,0 +1,15 @@
+defaults:
+- ../defaults/dp_sac.yaml
+task: lift
+base_policy: dp
+chunk_size: 50
+runtime:
+  mujoco: 3.1.6
+  robosuite: 1.4.1
+diffusion_training_steps: 100
+algorithm: sac
+training:
+  env_horizon_override: 300
+  gamma: 0.997
+  hidden_dims: 512,512,512
+  log_every_policy_steps: 1024

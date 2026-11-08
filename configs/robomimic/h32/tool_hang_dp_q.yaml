@@ -1,0 +1,28 @@
+defaults:
+- ../../defaults/dp_q.yaml
+task: tool_hang
+base_policy: dp
+chunk_size: 32
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.5.1
+diffusion_training_steps: 100
+algorithm: q
+training:
+  env_horizon_override: 800
+  eval_interval: 200000
+  offline_resume_save_interval_steps: 100000
+  offline_eval_max_decisions: 100000
+  n_envs: 4
+  gamma: 0.999
+  hidden_dims: 512,512,512
+  critic_obs_state_mode: stats_no_clip
+  bc_update_every_rl_updates: 2
+  bc_schedule_axis: env
+  bc_start_after_steps: 0
+  bc_success_capacity: 25000
+  bc_online_sampling: episode
+  bc_teacher_constraint_weight: 1.0
+  bc_base_mix_fraction: 0.0
+  dp_infer_steps: 20
+  latest_model_save_freq: 10000000

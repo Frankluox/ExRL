@@ -1,0 +1,20 @@
+defaults:
+- ../defaults/dp_sac.yaml
+task: transport
+base_policy: dp
+chunk_size: 50
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.4.1
+diffusion_training_steps: 100
+algorithm: sac
+training:
+  lowdim_keys: robot0_eef_pos,robot0_eef_quat,robot0_gripper_qpos,robot1_eef_pos,robot1_eef_quat,robot1_gripper_qpos,object
+  env_horizon_override: 800
+  gamma: 0.999
+  hidden_dims: 2048,2048,2048
+  dp_infer_steps: 20
+  log_every_policy_steps: 4096
+  online_eval_every_env_steps: 0
+  latest_model_save_freq: 100000000
+  force_thread_limits: true

@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: tiny pretraining and checkpoint tests requiring the full dependencies"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = ["vendor"]

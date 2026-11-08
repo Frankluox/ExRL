@@ -1,0 +1,15 @@
+defaults:
+- ../../defaults/act_sac.yaml
+task: square
+base_policy: act
+chunk_size: 32
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.4.1
+algorithm: sac
+training:
+  lowdim_keys: robot0_eef_pos,robot0_eef_quat,robot0_gripper_qpos,object
+  env_horizon_override: 400
+  gamma: 0.997
+  hidden_dims: 512,512,512
+  online_eval_every_env_steps: 100000

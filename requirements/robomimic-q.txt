@@ -1,0 +1,3 @@
+-r ../requirements.txt
+mujoco==3.3.5
+robosuite==1.4.1

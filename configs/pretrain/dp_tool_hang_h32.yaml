@@ -1,0 +1,56 @@
+_target_: agent.pretrain.train_diffusion_agent.TrainDiffusionAgent
+name: dp_tool_hang
+logdir: outputs/pretrain_dp
+train_dataset_path: assets/tool_hang/train.npz
+seed: 42
+device: cuda:0
+env_name: tool_hang
+env:
+  max_episode_steps: 800
+obs_dim: 53
+action_dim: 7
+denoising_steps: 100
+horizon_steps: 32
+cond_steps: 1
+wandb: null
+train:
+  n_epochs: 4000
+  batch_size: 512
+  learning_rate: 0.0001
+  weight_decay: 1.0e-06
+  lr_scheduler:
+    first_cycle_steps: 17600001
+    warmup_steps: 500
+    min_lr: 0.0
+    step_per_batch: true
+  save_model_freq: 2000
+model:
+  _target_: model.diffusion.diffusion.DiffusionModel
+  predict_epsilon: true
+  denoised_clip_value: 1.0
+  network:
+    _target_: model.diffusion.mlp_diffusion.DiffusionMLP
+    time_dim: 16
+    mlp_dims:
+    - 2048
+    - 2048
+    - 2048
+    residual_style: true
+    cond_dim: 53
+    horizon_steps: 32
+    action_dim: ${action_dim}
+  horizon_steps: 32
+  obs_dim: ${obs_dim}
+  action_dim: ${action_dim}
+  denoising_steps: 100
+  device: cuda:0
+  use_ddim: true
+  ddim_steps: 20
+ema:
+  decay: 0.995
+train_dataset:
+  _target_: agent.dataset.sequence.StitchedSequenceDataset
+  dataset_path: ${train_dataset_path}
+  horizon_steps: ${horizon_steps}
+  cond_steps: ${cond_steps}
+  device: ${device}

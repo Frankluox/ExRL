@@ -1,0 +1,19 @@
+defaults:
+- ../defaults/dp_q.yaml
+task: square
+base_policy: dp
+chunk_size: 50
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.4.1
+diffusion_training_steps: 100
+algorithm: q
+training:
+  env_horizon_override: 400
+  eval_interval: 100000
+  n_envs: 48
+  gamma: 0.997
+  hidden_dims: 512,512,512
+  critic_obs_state_mode: stats_no_clip
+  dp_infer_steps: 20
+  latest_model_save_freq: 10000000
