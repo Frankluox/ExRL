@@ -4,7 +4,7 @@
 
 [Project page](https://exrl-project.github.io) · [Base-policy training](docs/pretraining.md) · [Simulation](docs/experiments.md) · [Real robots](docs/real_robot.md)
 
-ExRL improves pretrained robot policies with reinforcement learning over **how long to execute each predicted action chunk before replanning**. The base policy supplies the actions; a lightweight execution-length policy learns when to query it again. Successful online trajectories can additionally improve the base policy through online behavior cloning.
+Adapting pretrained robot policies with reinforcement learning can require substantial interaction data, especially when long action chunks make the action space high-dimensional. ExRL addresses this challenge by learning **how long to execute each predicted action chunk before replanning**, enabling sample-efficient adaptation through a small discrete decision space. Across simulation and real robots, ExRL substantially improves success rates with limited interaction, including for π₀.₅ on contact-rich and long-horizon manipulation tasks.
 
 This repository includes **ExRL-Q**, **ExRL-SAC**, online BC and demonstration augmentation, base-policy training, and six RL baselines. Simulation and real-robot implementations live together, with separate environments for their dependencies.
 
