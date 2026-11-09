@@ -1,0 +1,98 @@
+name: tool_hang_dp_dsrl
+algorithm: dsrl_sac
+seed: 42
+device: cuda:0
+use_wandb: false
+env_name: tool_hang
+obs_dim: 53
+action_dim: 7
+cond_steps: 1
+act_steps: 50
+execute_steps: 50
+load_offline_data: false
+deterministic_eval: false
+total_timesteps: 100000000
+eval_interval: 8000
+num_evals: 200
+save_model_interval: 1000000
+save_replay_buffer: false
+latest_checkpoint:
+  interval_env_steps: 100000
+resume:
+  path: null
+  allow_config_mismatch: false
+online_eval:
+  interval_env_steps: 200000
+  total_episodes: 50
+  async_eval: false
+env:
+  n_envs: 4
+  n_eval_envs: 4
+  name: ${env_name}
+  max_episode_steps: 800
+  reset_at_iteration: false
+  save_video: false
+  best_reward_threshold_for_success: 1
+  reward_offset: 1
+  terminate_on_success: true
+  timeout_on_horizon: true
+  wrappers:
+    robomimic_lowdim:
+      normalization_path: ${normalization_path}
+      low_dim_keys:
+      - robot0_eef_pos
+      - robot0_eef_quat
+      - robot0_gripper_qpos
+      - object
+    multi_step:
+      n_obs_steps: ${cond_steps}
+      n_action_steps: ${act_steps}
+      max_episode_steps: ${env.max_episode_steps}
+      reset_within_step: true
+wandb: null
+train:
+  tau: 0.005
+  actor_lr: 5.0e-05
+  batch_size: 256
+  buffer_size: 1000000
+  train_freq: 1
+  utd: 20
+  use_layer_norm: true
+  layer_size: 512
+  num_layers: 3
+  discount: 0.99
+  ent_coef: 0.1
+  target_ent: 0.0
+  init_rollout_steps: 5000
+  action_magnitude: 0.75
+  n_critics: 2
+  critic_backup_combine_type: min
+  max_env_steps: 20000000
+model:
+  _target_: model.diffusion.diffusion_eval.DiffusionEval
+  ft_denoising_steps: 0
+  predict_epsilon: true
+  denoised_clip_value: 1.0
+  randn_clip_value: 3
+  network_path: ${base_policy_path}
+  network:
+    _target_: model.diffusion.mlp_diffusion.DiffusionMLP
+    time_dim: 16
+    mlp_dims:
+    - 2048
+    - 2048
+    - 2048
+    residual_style: true
+    cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
+    horizon_steps: ${act_steps}
+    action_dim: ${action_dim}
+  horizon_steps: ${act_steps}
+  obs_dim: ${obs_dim}
+  action_dim: ${action_dim}
+  denoising_steps: 100
+  device: ${device}
+  use_ddim: true
+  ddim_steps: 20
+  controllable_noise: true
+diffusion_horizon_steps: 50
+base_policy_horizon_steps: 50

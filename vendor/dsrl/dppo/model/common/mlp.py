@@ -14,6 +14,7 @@ import logging
 activation_dict = nn.ModuleDict(
     {
         "ReLU": nn.ReLU(),
+        "SiLU": nn.SiLU(),
         "ELU": nn.ELU(),
         "GELU": nn.GELU(),
         "Tanh": nn.Tanh(),

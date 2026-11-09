@@ -1,0 +1,6 @@
+benchmark: robomimic
+method: policy_decorator
+base_policy: dp
+task: transport
+chunk_size: 50
+native_config: configs/baselines/native/transport_dp_policy_decorator.yaml

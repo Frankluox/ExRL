@@ -4,6 +4,8 @@ from setuptools import find_namespace_packages, find_packages, setup
 
 roots = {
     "exrl": "exrl",
+    "baselines": "baselines",
+    "real_robot": "real_robot",
     "robomimic": "vendor/robomimic/robomimic",
     "lerobot": "vendor/lerobot/src/lerobot",
     "stable_baselines3": "vendor/dsrl/stable-baselines3/stable_baselines3",

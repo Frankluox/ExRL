@@ -1,0 +1,6 @@
+benchmark: robomimic
+method: parl
+base_policy: act
+task: can
+chunk_size: 50
+native_config: configs/baselines/native/can_act_parl.yaml

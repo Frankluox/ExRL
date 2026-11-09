@@ -1,0 +1,24 @@
+benchmark: robomimic
+method: ogpo
+base_policy: dp
+task: can
+chunk_size: 50
+training:
+  n_envs: 4
+  n_eval_envs: 4
+  max_episode_steps: 300
+  online_steps: 5000000
+  utd: 1/4
+  discount: 0.997
+  start_training: 10000
+  actor_lr: 4.5e-05
+  critic_lr: 4.5e-05
+  batch_size: 256
+  group_num_samples: 32
+  best_of_n: 8
+  timeout_on_horizon: true
+  eval_episodes: 50
+  eval_interval: 200000
+  eval_snapshot_interval: 0
+  critic_hidden_dims: 512,512,512,512
+  lowdim_keys: robot0_eef_pos,robot0_eef_quat,robot0_gripper_qpos,object

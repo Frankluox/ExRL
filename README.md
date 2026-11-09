@@ -1,14 +1,24 @@
 # ExRL
 
-ExRL improves pretrained action-chunked robot policies by learning **how long to execute each predicted chunk before replanning**. Reinforcement learning acts on the discrete execution length, while the base policy produces the robot actions. The base policy can also improve during RL by imitating successful online trajectories.
+ExRL adapts pretrained robot policies by learning **how much of each action chunk to execute before replanning**. RL chooses an execution length; the base policy produces the actions. Successful online trajectories can also be used to improve the base policy with behavior cloning.
 
 [Project page](https://exrl-project.github.io)
 
-This repository contains the Robomimic experiments with Diffusion Policy (DP) and ACT: ExRL-Q, ExRL-SAC, online behavior cloning, and learning from offline demonstrations. It also includes DP and ACT pretraining.
+This repository contains ExRL-Q and ExRL-SAC, online BC and demonstration augmentation, baseline RL implementations, and the core real-robot training code. Simulation and real-robot code share one repository, with separate installation instructions for their dependencies.
 
-## Installation
+| Experiment | Base policies | Guide |
+| --- | --- | --- |
+| Robomimic | DP, ACT | [Training and evaluation](docs/experiments.md) · [Pretraining](docs/pretraining.md) |
+| Adroit | DP | [Adroit](docs/adroit.md) |
+| LIBERO | π₀, π₀.₅, π₀-FAST, Cosmos | [LIBERO](docs/libero.md) |
+| Real robot | π₀.₅ on Piper | [Robot setup and training](docs/real_robot.md) |
+| RL baselines | DSRL, Policy Decorator, PA-RL, ResFiT, OGPO, DICE-RL | [Baselines](docs/baselines.md) |
 
-Use Python 3.10 on Linux with a CUDA GPU.
+Datasets and pretrained weights are supplied separately. Analysis experiments, plotting code, and paper-figure data are not part of this repository.
+
+## Quick start: ExRL on Robomimic
+
+Use Python 3.10 on Linux with a CUDA GPU. Create a dedicated environment:
 
 ```bash
 conda create -n exrl python=3.10
@@ -18,18 +28,16 @@ pip install -e .
 export MUJOCO_GL=egl
 ```
 
-This installs the environment used by the Can example below. Tool Hang and some DP ExRL-SAC experiments use different simulator versions; see [experiment settings](docs/experiments.md). The bundled Robomimic, LeRobot, and vector-environment utilities are installed with ExRL.
+This environment runs the Can example below. Tool Hang and some SAC configurations use different simulator versions; see [experiment settings](docs/experiments.md).
 
-## Run ExRL
-
-The following example adapts a DP policy on Can. You need its checkpoint and the dataset used for pretraining. Obtain the low-dimensional dataset from [Robomimic](https://robomimic.github.io/docs/datasets/overview.html), then prepare the observations, normalization statistics, and environment metadata:
+Start with a pretrained DP checkpoint and its low-dimensional [Robomimic dataset](https://robomimic.github.io/docs/datasets/overview.html). Prepare the data once:
 
 ```bash
 python prepare_data.py \
   --task can --dataset data/can_low_dim.hdf5 --output data/can
 ```
 
-If you do not have a base policy, train one using the [pretraining instructions](docs/pretraining.md). Dataset files and pretrained weights are not included in this repository.
+If you need to train the base policy, follow [pretraining](docs/pretraining.md). Keep the DP training `.hydra/config.yaml` beside its `checkpoint/` directory, and use the normalization statistics from that training dataset.
 
 ```bash
 python train.py \
@@ -39,15 +47,7 @@ python train.py \
   --output outputs/can_dp_q
 ```
 
-Keep the DP checkpoint's `.hydra/config.yaml` alongside its `checkpoint/` directory. When using an existing policy, use its matching normalization statistics. ACT takes a checkpoint directory instead of a `.pt` file.
-
-Training writes a run directory containing checkpoints, TensorBoard logs, and `experiment.yaml`. To inspect learning progress:
-
-```bash
-tensorboard --logdir outputs
-```
-
-Evaluate a saved checkpoint with the settings from its run:
+Training saves checkpoints, TensorBoard logs, and the resolved experiment configuration. Run `tensorboard --logdir outputs` to inspect progress. Evaluate the saved execution-length policy with:
 
 ```bash
 python evaluate.py \
@@ -55,37 +55,33 @@ python evaluate.py \
   --episodes 50
 ```
 
-Replace `run_DATE_TIME` with the directory printed during training. Evaluation restores both the execution-length policy and, for online BC, the updated base policy.
+Replace `run_DATE_TIME` with the directory printed by training. For online BC, evaluation also restores the adapted base policy.
 
-## Other experiments
+## Choose an experiment
 
-Choose a configuration in [`configs/robomimic/`](configs/robomimic). For example:
+Change the YAML while keeping the same `train.py` command:
 
-| Configuration | Method |
+| Configuration | Experiment |
 | --- | --- |
-| `can_dp_q.yaml` | ExRL-Q with DP |
-| `can_dp_sac.yaml` | ExRL-SAC with DP |
-| `can_act_q.yaml` | ExRL-Q with ACT |
-| `can_dp_online_bc.yaml` | ExRL-Q with online BC |
-| `can_act_demo_bc.yaml` | ExRL-Q with online BC and demonstrations |
-| `can_dp_demo.yaml` | ExRL-Q with demonstrations in RL replay |
+| `configs/robomimic/can_dp_sac.yaml` | ExRL-SAC |
+| `configs/robomimic/can_act_q.yaml` | ExRL-Q with ACT |
+| `configs/robomimic/can_dp_online_bc.yaml` | ExRL-Q with online BC |
+| `configs/robomimic/can_act_demo_bc.yaml` | ExRL-Q with online BC and demonstrations |
+| `configs/robomimic/can_dp_demo.yaml` | Demonstrations in ExRL's RL replay |
+| `configs/baselines/robomimic/can_dp_resfit.yaml` | ResFiT |
 
-The main configurations use chunks of 50 actions; [`h32/`](configs/robomimic/h32) contains the 32-action experiments. The same training command works for each configuration.
-
-Settings shared across tasks live in [`configs/defaults/`](configs/defaults). You can edit the YAML files or override individual options:
+Shared settings live in `configs/defaults/`; task-specific files contain the differences. Robomimic uses 50-action chunks by default, with 32-action configurations in `configs/robomimic/h32/`. Override settings without editing a file:
 
 ```bash
 python train.py --config configs/robomimic/can_dp_q.yaml --print-config
 
 python train.py --config configs/robomimic/can_dp_q.yaml \
   --data data/can --base-policy models/can_dp/checkpoint/state_20000.pt \
-  --set n_envs=4 --seed 43
+  --seed 43 --set n_envs=4
 ```
 
-UTD is the number of gradient updates per collected execution-length transition. The launcher adjusts the number of updates when `n_envs` changes.
-
-See [experiment settings](docs/experiments.md) for task coverage, BC variants, and resuming training, and [code structure](docs/code.md) for the learning algorithm and replay implementation.
+See the benchmark guides for their checkpoint formats and evaluation commands. [Code structure](docs/code.md) points to the learner, replay, policy adapters, and robot interface.
 
 ## Acknowledgments
 
-This code builds on [DSRL](https://github.com/ajwagen/dsrl), [DPPO](https://github.com/irom-princeton/dppo), [Robomimic](https://github.com/ARISE-Initiative/robomimic), [LeRobot](https://github.com/huggingface/lerobot), and [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3). See [third-party licenses](THIRD_PARTY.md).
+We build on DSRL, DPPO, Robomimic, LeRobot, Stable-Baselines3, OpenPI, and the baseline implementations cited in the paper. Third-party components retain their upstream notices; see [THIRD_PARTY.md](THIRD_PARTY.md).

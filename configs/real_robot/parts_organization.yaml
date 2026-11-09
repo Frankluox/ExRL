@@ -1,0 +1,18 @@
+defaults:
+- defaults.yaml
+task: parts_organization
+prompt: Put the parts in the box and close the lid.
+episode_steps: 1021
+reward: stage_bonus
+stages: 5
+warmup_episodes: 29
+warmup_transitions: 1
+warmup_updates: 5000
+batch_size: 64
+updates_per_episode: 400
+learner:
+  hidden_dims:
+  - 1024
+  - 1024
+  - 1024
+  target_q_clip_max: 1000.0

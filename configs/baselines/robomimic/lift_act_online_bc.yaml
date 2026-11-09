@@ -1,0 +1,17 @@
+benchmark: robomimic
+method: online_bc
+base_policy: act
+task: lift
+chunk_size: 50
+training:
+  n_envs: 4
+  fixed_exec_len: 50
+  bc_lr: 1.0e-05
+  bc_batch_size: 128
+  bc_update_every_rl_updates: 32
+  virtual_rl_updates_per_collector_step: 1
+  bc_teacher_constraint_weight: 1.0
+  offline_eval_n_envs: 4
+  stop_after_env_steps: 2000000
+  env_horizon_override: 300
+  offline_env_eval_interval_steps: 200000

@@ -1,0 +1,6 @@
+defaults:
+- ../defaults/libero.yaml
+benchmark: libero
+method: exrl_q
+base_policy: pi0fast
+task: cream_cheese

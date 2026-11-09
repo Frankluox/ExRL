@@ -13,10 +13,14 @@ outputs/
 *.log
 events.out.tfevents.*
 
-models/
-data/
+/models/
+/data/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
 build/
 dist/
+robot.local.yaml
+*.ckpt
+*.pkl
+*.h5

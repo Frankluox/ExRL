@@ -1,0 +1,25 @@
+defaults:
+- ../../defaults/dp_online_bc.yaml
+task: can
+base_policy: dp
+chunk_size: 50
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.4.1
+diffusion_training_steps: 100
+algorithm: q
+training:
+  env_horizon_override: 300
+  eval_interval: 200000
+  offline_resume_save_interval_steps: 100000000
+  n_envs: 48
+  gamma: 0.997
+  hidden_dims: 512,512,512
+  critic_obs_state_mode: stats_no_clip
+  bc_start_after_steps: 0
+  dp_infer_steps: 20
+  ipc_chunk_dtype: fp32
+  latest_model_save_freq: 250000
+  pipeline: online_full_chunk_bc
+  eval_episodes: 50
+  total_policy_steps: 100000000

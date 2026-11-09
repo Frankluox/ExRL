@@ -1,0 +1,14 @@
+# Match these topics and raw-unit limits to your robot controller.
+image_topic: /camera/color/image_raw
+wrist_topic: /wrist_camera/color/image_raw
+state_topic: /piper/joint_states
+# This topic must accept Piper raw coordinates, not radians.
+action_topic: /piper/joint_commands
+joint_offset: [0, 0, 0, 0, 0, 0]
+joint_limits: null
+# Optional [left, top, width, height] crops, applied before policy inference.
+image_crop: null
+wrist_image_crop: null
+max_age: 0.5
+max_skew: 0.1
+observation_timeout: 5

@@ -19,7 +19,7 @@ The simulator versions are also recorded in each YAML configuration. Add `--chec
 
 Each task file specifies the base policy, chunk size, simulator versions, and task-dependent parameters. It inherits shared training settings from `configs/defaults/`. Paths in `defaults` are relative to the YAML file; paths passed on the command line are relative to your working directory.
 
-Main experiments are in `configs/robomimic/`; H=32 experiments are in `configs/robomimic/h32/`. ExRL-Q covers all five tasks at both chunk sizes. ExRL-SAC also covers both sizes except Tool Hang, which currently has H=50 configurations. DP online BC covers both sizes; ACT online BC has H=50 only for Tool Hang. Demonstration-augmented ACT BC uses H=50, and demonstration replay is provided for DP on Can at H=50.
+Main experiments are in `configs/robomimic/`; H=32 experiments are in `configs/robomimic/h32/`. ExRL-Q covers all five tasks at both chunk sizes. ExRL-SAC also covers all five tasks at both chunk sizes. DP online BC covers both sizes; ACT online BC has H=50 only for Tool Hang. Demonstration-augmented ACT BC covers both chunk sizes, and demonstration replay is provided for DP on Can at H=50.
 
 ExRL-Q uses UTD=0.25 and ExRL-SAC uses UTD=1. A collected transition represents one execution-length decision. `eval_interval` counts primitive environment steps; `warmup_transitions` and `online_transitions` count execution-length transitions. For a fixed UTD, `utd * n_envs * train_freq` must be an integer.
 

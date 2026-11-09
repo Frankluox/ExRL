@@ -1,0 +1,48 @@
+seed: 42
+chunk_size: 50
+horizon: 250
+discount: 0.997
+env_steps: 3000000
+replay_capacity: 100000
+batch_size: 256
+warmup_transitions: 512
+warmup_updates: 5000
+utd: 1
+eval_interval: 30000
+eval_episodes: 50
+save_interval: 100000
+learner:
+  critic_lr: 0.0003
+  actor_lr: 5.0e-05
+  temp_lr: 1.0e-05
+  hidden_dims:
+  - 512
+  - 512
+  - 512
+  cnn_features:
+  - 32
+  - 32
+  - 32
+  - 32
+  cnn_strides:
+  - 2
+  - 1
+  - 1
+  - 1
+  encoder_type: small
+  latent_dim: 50
+  critic_use_layer_norm: true
+  actor_use_layer_norm: true
+  num_qs: 10
+  num_cameras: 1
+  target_critic_subsample_size: 2
+  critic_reduction: min
+  target_policy_mode: q_greedy
+  cql_alpha: 0.3
+  cql_temp: 1.0
+  target_q_clip_min: -1000.0
+  target_q_clip_max: 0.0
+  tau: 0.005
+  random_crop: true
+  color_jitter: false
+  aug_next: true

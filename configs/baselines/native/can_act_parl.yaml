@@ -1,0 +1,183 @@
+_target_: baselines.parl.act_train.TrainPARLDQLACTAgent
+name: can_act_parl
+robomimic_env_cfg_path: cfg/robomimic/env_meta/can.json
+seed: 42
+device: cuda:0
+env_name: can
+obs_dim: 23
+action_dim: 7
+denoising_steps: 100
+cond_steps: 1
+horizon_steps: 50
+act_steps: 50
+use_ddim: true
+ddim_steps: 20
+env:
+  n_envs: 4
+  name: ${env_name}
+  best_reward_threshold_for_success: 1
+  max_episode_steps: 300
+  save_video: false
+  reset_at_iteration: false
+  wrappers:
+    robomimic_lowdim:
+      normalization_path: ${normalization_path}
+      low_dim_keys:
+      - robot0_eef_pos
+      - robot0_eef_quat
+      - robot0_gripper_qpos
+      - object
+    multi_step:
+      n_obs_steps: ${cond_steps}
+      n_action_steps: ${act_steps}
+      max_episode_steps: ${env.max_episode_steps}
+      reset_within_step: true
+      terminate_on_success: true
+      timeout_on_horizon: true
+  n_eval_envs: 4
+wandb: null
+train:
+  n_train_itr: 1401
+  n_critic_warmup_itr: 2
+  tensorboard: true
+  tensorboard_dir: scalars_1
+  n_steps: 20
+  gamma: 0.99
+  actor_lr: 5.0e-06
+  actor_weight_decay: 0
+  actor_lr_scheduler:
+    first_cycle_steps: 1000
+    warmup_steps: 10
+    min_lr: 5.0e-06
+  critic_lr: 0.0003
+  critic_weight_decay: 0
+  critic_lr_scheduler:
+    first_cycle_steps: 1000
+    warmup_steps: 10
+    min_lr: 0.0003
+  save_model_freq: 200
+  save_replay_buffer: true
+  val_freq: 1000000
+  force_train: true
+  resume_ckpt: null
+  render:
+    freq: 1
+    num: 0
+  scale_reward_factor: 1
+  reward_offset: 1.0
+  calql_push_failed_to_min: false
+  calql_min_reward: -1.0
+  offline_dataset_path: ${offline_dataset_path}
+  offline_batch_ratio: 0.0
+  offline_max_n_episodes: 300
+  offline_success_reward_threshold: 0.5
+  target_ema_rate: 0.005
+  buffer_size: 1000000
+  eta: 1.0
+  replay_ratio: 64
+  batch_size: 256
+  parl:
+    enable_actor_distill: true
+    num_base_policy_actions: 2
+    num_actions_to_keep: 2
+    distill_argmax: false
+    softmax_temperature: 10.0
+    consider_replay_action: true
+    actor_update_freq: 128
+    local_optimization_steps: 15
+    local_optimization_step_size: 0.0005
+    distill_local_optimization_steps: 15
+    distill_local_optimization_step_size: 0.0005
+    optimize_critic_ensemble_min: false
+    use_target_critic_for_optimization: false
+    actor_distill_start_updates: 2020
+    actor_distill_start_env_steps: null
+    optimized_eval_freq_env_steps: 200000
+    optimized_eval_n_episodes: 50
+    optimized_eval_max_steps: null
+    optimized_eval_at_start: true
+    override_actor_lr_after_resume: null
+    critic_warmup_updates: 2000
+    critic_warmup_env_steps: null
+    use_min_q: false
+    rollout_policy: optimized_after_warmup
+    eval_policy: optimized
+    optimized_rollout_warmup_updates: 2000
+    optimized_policy_argmax: true
+    optimized_policy_temperature: 1.0
+    optimized_eval_async: false
+  max_env_steps: 5000000
+model:
+  _target_: baselines.parl.act.ACTPARLDQL
+  network_path: ${base_policy_path}
+  task: ${env_name}
+  state_obs_keys:
+  - robot0_eef_pos
+  - robot0_eef_quat
+  - robot0_gripper_qpos
+  env_obs_keys:
+  - object
+  lowdim_keys:
+  - robot0_eef_pos
+  - robot0_eef_quat
+  - robot0_gripper_qpos
+  - object
+  lowdim_dims:
+    robot0_eef_pos: 3
+    robot0_eef_quat: 4
+    robot0_gripper_qpos: 2
+    object: 14
+  distributional_critic: true
+  critic_subsample_size: 2
+  use_calql: true
+  use_calql_on_random_actions: false
+  cql_alpha: 0.005
+  cql_n_actions: 10
+  cql_temp: 1.0
+  cql_action_sample_method: uniform
+  cql_include_random_actions: true
+  cql_include_current_actions: true
+  cql_include_next_actions: true
+  cql_include_data_action: true
+  cql_importance_sample: false
+  cql_clip_diff_min: null
+  cql_clip_diff_max: null
+  cql_action_low: -1.0
+  cql_action_high: 1.0
+  cql_use_parl_policy_actions: true
+  cql_num_base_policy_actions: 1
+  cql_num_actions_to_keep: 1
+  cql_local_optimization_steps: 10
+  cql_local_optimization_step_size: 0.0003
+  cql_optimize_critic_ensemble_min: false
+  cql_use_target_critic_for_optimization: false
+  cql_policy_argmax: true
+  cql_policy_temperature: 1.0
+  cql_policy_use_min_q: false
+  backup_use_parl_policy_actions: true
+  backup_policy_argmax: true
+  critic:
+    _target_: model.common.critic.DistributionalCriticObsAct
+    action_dim: ${action_dim}
+    action_steps: ${act_steps}
+    cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
+    mlp_dims:
+    - 512
+    - 512
+    - 512
+    activation_type: SiLU
+    use_layernorm: true
+    critic_ensemble_size: 10
+    q_min: -100.0
+    q_max: 0.0
+    num_bins: 128
+    init_final_scale: 0.01
+  horizon_steps: ${act_steps}
+  obs_dim: ${obs_dim}
+  action_dim: ${action_dim}
+  device: ${device}
+  final_action_clip_value: 1.0
+diffusion_horizon_steps: 50
+base_policy_horizon_steps: 50
+execute_steps: 50
+use_wandb: false

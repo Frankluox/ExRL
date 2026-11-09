@@ -1,0 +1,6 @@
+benchmark: robomimic
+method: parl
+base_policy: act
+task: square
+chunk_size: 50
+native_config: configs/baselines/native/square_act_parl.yaml

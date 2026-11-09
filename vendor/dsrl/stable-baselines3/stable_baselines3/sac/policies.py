@@ -22,6 +22,12 @@ LOG_STD_MAX = 2
 LOG_STD_MIN = -20
 
 
+def small_layer_init(layer: nn.Linear, std: float = 0.01, bias: float = 0.0) -> nn.Linear:
+    nn.init.orthogonal_(layer.weight, std)
+    nn.init.constant_(layer.bias, bias)
+    return layer
+
+
 class Actor(BasePolicy):
     """
     Actor network (policy) for SAC.
@@ -103,12 +109,10 @@ class Actor(BasePolicy):
         else:
             if standard_gauss_init:
                 self.action_dist = SquashedDiagGaussianDistribution(action_dim)  # type: ignore[assignment]
-                self.mu = nn.Linear(last_layer_dim, action_dim)
-                nn.init.zeros_(self.mu.weight)
-                nn.init.zeros_(self.mu.bias)
-                self.log_std = nn.Linear(last_layer_dim, action_dim)  # type: ignore[assignment]
-                nn.init.zeros_(self.log_std.weight)
-                nn.init.zeros_(self.log_std.bias)
+                self.mu = small_layer_init(nn.Linear(last_layer_dim, action_dim))
+                self.log_std = small_layer_init(  # type: ignore[assignment]
+                    nn.Linear(last_layer_dim, action_dim), bias=log_std_init
+                )
             else:
                 self.action_dist = SquashedDiagGaussianDistribution(action_dim)  # type: ignore[assignment]
                 self.mu = nn.Linear(last_layer_dim, action_dim)
@@ -128,6 +132,7 @@ class Actor(BasePolicy):
                 use_expln=self.use_expln,
                 features_extractor=self.features_extractor,
                 clip_mean=self.clip_mean,
+                standard_gauss_init=self.standard_gauss_init,
             )
         )
         return data
@@ -173,7 +178,10 @@ class Actor(BasePolicy):
         # Unstructured exploration (Original implementation)
         log_std = self.log_std(latent_pi)  # type: ignore[operator]
         # Original Implementation to cap the standard deviation
-        if not self.standard_gauss_init:
+        if self.standard_gauss_init:
+            log_std = th.tanh(log_std)
+            log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (log_std + 1)
+        else:
             log_std = th.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
         return mean_actions, log_std, {}
 
@@ -337,6 +345,7 @@ class SACPolicy(BasePolicy):
                 log_std_init=self.actor_kwargs["log_std_init"],
                 use_expln=self.actor_kwargs["use_expln"],
                 clip_mean=self.actor_kwargs["clip_mean"],
+                standard_gauss_init=self.actor_kwargs["standard_gauss_init"],
                 n_critics=self.critic_kwargs["n_critics"],
                 lr_schedule=self._dummy_schedule,  # dummy lr schedule, not needed for loading policy alone
                 optimizer_class=self.optimizer_class,
@@ -383,6 +392,82 @@ class SACPolicy(BasePolicy):
 
 
 MlpPolicy = SACPolicy
+
+
+class ActorConditionedSACPolicy(SACPolicy):
+    """
+    SAC policy variant whose actor can use a different flat observation space
+    than the critic. This is useful for residual RL experiments where the
+    actor conditions on rollout-time base actions while the critic keeps the
+    original environment observation interface.
+    """
+
+    def __init__(
+        self,
+        observation_space: spaces.Space,
+        action_space: spaces.Box,
+        lr_schedule: Schedule,
+        net_arch: Optional[Union[list[int], dict[str, list[int]]]] = None,
+        activation_fn: type[nn.Module] = nn.ReLU,
+        use_sde: bool = False,
+        log_std_init: float = -3,
+        use_expln: bool = False,
+        clip_mean: float = 2.0,
+        features_extractor_class: type[BaseFeaturesExtractor] = FlattenExtractor,
+        features_extractor_kwargs: Optional[dict[str, Any]] = None,
+        normalize_images: bool = True,
+        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[dict[str, Any]] = None,
+        n_critics: int = 2,
+        share_features_extractor: bool = False,
+        post_linear_modules: Optional[list[type[nn.Module]]] = None,
+        standard_gauss_init: bool = False,
+        actor_observation_space: Optional[spaces.Space] = None,
+    ):
+        self.actor_observation_space = actor_observation_space or observation_space
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            lr_schedule=lr_schedule,
+            net_arch=net_arch,
+            activation_fn=activation_fn,
+            use_sde=use_sde,
+            log_std_init=log_std_init,
+            use_expln=use_expln,
+            clip_mean=clip_mean,
+            features_extractor_class=features_extractor_class,
+            features_extractor_kwargs=features_extractor_kwargs,
+            normalize_images=normalize_images,
+            optimizer_class=optimizer_class,
+            optimizer_kwargs=optimizer_kwargs,
+            n_critics=n_critics,
+            share_features_extractor=share_features_extractor,
+            post_linear_modules=post_linear_modules,
+            standard_gauss_init=standard_gauss_init,
+        )
+
+    def _get_constructor_parameters(self) -> dict[str, Any]:
+        data = super()._get_constructor_parameters()
+        data.update(dict(actor_observation_space=self.actor_observation_space))
+        return data
+
+    def make_actor_features_extractor(self) -> BaseFeaturesExtractor:
+        return self.features_extractor_class(self.actor_observation_space, **self.features_extractor_kwargs)
+
+    def make_actor(self, features_extractor: Optional[BaseFeaturesExtractor] = None) -> Actor:
+        actor_kwargs = self.actor_kwargs.copy()
+        if features_extractor is None:
+            features_extractor = self.make_actor_features_extractor()
+        actor_kwargs.update(
+            dict(
+                observation_space=self.actor_observation_space,
+                features_extractor=features_extractor,
+                features_dim=features_extractor.features_dim,
+            )
+        )
+        return Actor(**actor_kwargs).to(self.device)
+
+ActorConditionedMlpPolicy = ActorConditionedSACPolicy
 
 
 class CnnPolicy(SACPolicy):

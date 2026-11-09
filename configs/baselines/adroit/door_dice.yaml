@@ -1,0 +1,13 @@
+benchmark: adroit
+method: dice
+base_policy: dp
+task: door
+chunk_size: 32
+training:
+  n_envs: 4
+  total_primitive_steps: 10000000
+  offline_replay_capacity: 1000000
+  online_replay_capacity: 1000000
+  eval_snapshot_interval: 0
+  critic_updates_per_macro_transition: 1.0
+  actor_target_updates_per_macro_transition: 0.5

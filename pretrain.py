@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Train a DP or ACT base policy on Robomimic demonstrations."""
+"""Pretrain DP or ACT on the configured benchmark demonstrations."""
+
 import argparse
 import os
 from pathlib import Path
@@ -14,13 +15,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True, help="YAML in configs/pretrain/")
     parser.add_argument(
-        "--data", required=True, help="Directory created by prepare_data.py"
+        "--data", required=True, help="Prepared benchmark data directory or Adroit HDF5"
     )
     parser.add_argument("--output", required=True)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
     parser.add_argument("--print-config", action="store_true")
     args = parser.parse_args()
+    os.environ.setdefault("ROBOMIMIC_ENABLE_LANG", "0")
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("WANDB_MODE", "disabled")
     config = load_config(args.config)
     for item in args.set:
         if "=" not in item:
@@ -33,6 +37,48 @@ def main():
         if parts[-1] not in target:
             raise ValueError(f"Unknown setting: {key}")
         target[parts[-1]] = yaml.safe_load(value)
+
+    if config.get("benchmark") == "adroit":
+        from exrl.adroit.pretrain_config import build_parser, build_config
+        from exrl.adroit.pretrain import train
+        from robomimic.utils.torch_utils import get_torch_device
+
+        data = Path(args.data).expanduser().resolve()
+        dataset = data if data.is_file() else data / "expert_v2_robomimic.hdf5"
+        output = Path(args.output).expanduser().resolve()
+        options = build_parser().parse_args(
+            [
+                "--task",
+                config["task"],
+                "--quality",
+                "expert",
+                "--dataset",
+                str(dataset),
+                "--output-dir",
+                str(output),
+                "--config-out",
+                str(output / "config.json"),
+            ]
+        )
+        for key, value in config.get("training", {}).items():
+            if not hasattr(options, key):
+                raise ValueError(f"Unknown Adroit pretraining setting: {key}")
+            setattr(options, key, value)
+        options.action_normalization = None
+        native = build_config(options)
+        native.train.cuda = args.device.startswith("cuda")
+        if args.print_config:
+            print(native.dump())
+            return
+        if not dataset.is_file():
+            raise FileNotFoundError(dataset)
+        if output.exists() and any(output.iterdir()):
+            raise FileExistsError(f"Choose an empty output directory: {output}")
+        output.mkdir(parents=True, exist_ok=True)
+        native.dump(str(output / "config.json"))
+        native.lock()
+        train(native, get_torch_device(try_to_use_cuda=native.train.cuda))
+        return
 
     data = Path(args.data).expanduser().resolve()
     output = Path(args.output).expanduser().resolve()
@@ -65,9 +111,6 @@ def main():
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"Choose an empty output directory: {output}")
     output.mkdir(parents=True, exist_ok=True)
-    os.environ.setdefault("ROBOMIMIC_ENABLE_LANG", "0")
-    os.environ.setdefault("HF_HUB_OFFLINE", "1")
-    os.environ.setdefault("WANDB_MODE", "disabled")
     if is_dp:
         import hydra
         from omegaconf import OmegaConf

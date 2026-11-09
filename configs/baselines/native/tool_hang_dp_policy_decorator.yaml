@@ -1,0 +1,119 @@
+name: tool_hang_dp_policy_decorator
+base_policy_type: diffusion
+act_state_obs_keys: null
+act_env_obs_keys: null
+act_lowdim_keys: ${env.wrappers.robomimic_lowdim.low_dim_keys}
+act_lowdim_dims: null
+act_observation_space_kind: null
+act_action_space_kind: null
+algorithm: residual_sac
+seed: 42
+device: cuda:0
+use_wandb: false
+env_name: tool_hang
+obs_dim: 53
+action_dim: 7
+cond_steps: 1
+act_steps: 50
+base_policy_horizon_steps: 50
+load_offline_data: false
+deterministic_eval: true
+eval_interval: 6000
+num_evals: 8
+save_model_interval: 500000
+save_replay_buffer: true
+save_latest_checkpoint: true
+resume_from: null
+resume_replay_buffer_path: auto
+env:
+  n_envs: 2
+  n_eval_envs: 4
+  name: ${env_name}
+  max_episode_steps: 800
+  terminate_on_success: true
+  timeout_on_horizon: true
+  reward_shaping: true
+  reset_at_iteration: false
+  save_video: false
+  best_reward_threshold_for_success: 1
+  reward_offset: 1
+  wrappers:
+    robomimic_lowdim:
+      normalization_path: ${normalization_path}
+      low_dim_keys:
+      - robot0_eef_pos
+      - robot0_eef_quat
+      - robot0_gripper_qpos
+      - object
+    multi_step:
+      n_obs_steps: ${cond_steps}
+      n_action_steps: ${act_steps}
+      max_episode_steps: ${env.max_episode_steps}
+      reset_within_step: true
+wandb: null
+train:
+  total_timesteps: 100000000
+  tau: 0.005
+  actor_lr: 2.5e-05
+  critic_lr: 5.0e-05
+  alpha_lr: 0.0001
+  buffer_size: 100000
+  batch_size: 256
+  train_freq: 32
+  utd: 16
+  use_layer_norm: false
+  layer_size: 512
+  num_layers: 3
+  discount: 0.999
+  ent_coef: 0.0005
+  ent_coef_final: null
+  ent_coef_fraction: 1.0
+  ent_coef_steps: null
+  target_ent: 0.0
+  log_std_init: 0.0
+  standard_gauss_init: true
+  init_rollout_steps: 0
+  learning_starts: 4096
+  n_critics: 2
+  res_scale: 0.02
+  prog_explore_steps: 4096
+  pre_learning_residual_mode: random_residual
+  actor_obs_mode: obs_base_action
+  actor_gradient_steps: 1
+  action_norm_regularization: 0.0
+  residual_temporal_group_size: 1
+  residual_active_steps: null
+  env_step_eval_interval: 200000
+  env_step_eval_episodes: 50
+  env_step_eval_deterministic: false
+  max_grad_norm: 50
+  async_eval_snapshot_interval: 0
+  max_env_steps: 20000000
+model:
+  _target_: model.diffusion.diffusion_eval.DiffusionEval
+  ft_denoising_steps: 0
+  predict_epsilon: true
+  denoised_clip_value: 1.0
+  randn_clip_value: 3
+  network_path: ${base_policy_path}
+  network:
+    _target_: model.diffusion.mlp_diffusion.DiffusionMLP
+    time_dim: 16
+    mlp_dims:
+    - 2048
+    - 2048
+    - 2048
+    residual_style: true
+    cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
+    horizon_steps: ${act_steps}
+    action_dim: ${action_dim}
+  horizon_steps: ${act_steps}
+  obs_dim: ${obs_dim}
+  action_dim: ${action_dim}
+  denoising_steps: 100
+  device: ${device}
+  use_ddim: true
+  ddim_steps: 20
+  controllable_noise: true
+diffusion_horizon_steps: 50
+execute_steps: 50

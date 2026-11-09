@@ -243,6 +243,42 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         if not hasattr(self.replay_buffer, "handle_timeout_termination"):  # pragma: no cover
             self.replay_buffer.handle_timeout_termination = False
             self.replay_buffer.timeouts = np.zeros_like(self.replay_buffer.dones)
+        if not hasattr(self.replay_buffer, "_action_dtype"):  # pragma: no cover
+            self.replay_buffer._action_dtype = self.replay_buffer._maybe_cast_dtype(self.replay_buffer.action_space.dtype)
+        if not hasattr(self.replay_buffer, "_action_storage_shape"):  # pragma: no cover
+            self.replay_buffer._action_storage_shape = (
+                self.replay_buffer.buffer_size,
+                self.replay_buffer.n_envs,
+                self.replay_buffer.action_dim,
+            )
+        if not hasattr(self.replay_buffer, "noise_actions"):  # pragma: no cover
+            self.replay_buffer.noise_actions = None
+        if not hasattr(self.replay_buffer, "next_noise_actions"):  # pragma: no cover
+            self.replay_buffer.next_noise_actions = None
+        if not hasattr(self.replay_buffer, "base_actions"):  # pragma: no cover
+            self.replay_buffer.base_actions = None
+        if not hasattr(self.replay_buffer, "next_base_actions"):  # pragma: no cover
+            self.replay_buffer.next_base_actions = None
+        if not hasattr(self.replay_buffer, "use_noise_actions"):  # pragma: no cover
+            self.replay_buffer.use_noise_actions = (
+                self.replay_buffer.noise_actions is not None and self.replay_buffer.next_noise_actions is not None
+            )
+        else:
+            self.replay_buffer.use_noise_actions = bool(
+                self.replay_buffer.use_noise_actions
+                and self.replay_buffer.noise_actions is not None
+                and self.replay_buffer.next_noise_actions is not None
+            )
+        if not hasattr(self.replay_buffer, "use_base_actions"):  # pragma: no cover
+            self.replay_buffer.use_base_actions = (
+                self.replay_buffer.base_actions is not None and self.replay_buffer.next_base_actions is not None
+            )
+        else:
+            self.replay_buffer.use_base_actions = bool(
+                self.replay_buffer.use_base_actions
+                and self.replay_buffer.base_actions is not None
+                and self.replay_buffer.next_base_actions is not None
+            )
 
         if isinstance(self.replay_buffer, HerReplayBuffer):
             assert self.env is not None, "You must pass an environment at load time when using `HerReplayBuffer`"
@@ -336,7 +372,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         assert self.env is not None, "You must set the environment before calling learn()"
         assert isinstance(self.train_freq, TrainFreq)  # check done in _setup_learn()
 
-        while self.num_timesteps < total_timesteps:
+        while self.num_timesteps < self._total_timesteps:
             rollout = self.collect_rollouts(
                 self.env,
                 train_freq=self.train_freq,
@@ -440,6 +476,8 @@ class OffPolicyAlgorithm(BaseAlgorithm):
 
         if len(self.ep_success_buffer) > 0:
             self.logger.record("rollout/success_rate", safe_mean(self.ep_success_buffer))
+            recent_successes = list(self.ep_success_buffer)[-20:]
+            self.logger.record("rollout/success_rate_recent20", safe_mean(recent_successes))
         # Pass the number of timesteps for tensorboard
         self.logger.dump(step=self.env_steps_exact)
 

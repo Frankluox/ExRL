@@ -1,0 +1,6 @@
+benchmark: robomimic
+method: dsrl
+base_policy: dp
+task: tool_hang
+chunk_size: 50
+native_config: configs/baselines/native/tool_hang_dp_dsrl.yaml

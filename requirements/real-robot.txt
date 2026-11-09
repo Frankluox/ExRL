@@ -1,0 +1,3 @@
+-r pixel.txt
+# Install openpi-client from the OpenPI checkout; ROS Python bindings come
+# from the robot's ROS installation (see docs/real_robot.md).

@@ -1,0 +1,28 @@
+defaults:
+- ../../defaults/dp_sac.yaml
+task: tool_hang
+base_policy: dp
+chunk_size: 32
+runtime:
+  mujoco: 3.3.5
+  robosuite: 1.5.1
+diffusion_training_steps: 100
+algorithm: sac
+training:
+  env_horizon_override: 800
+  stop_after_env_steps: 30000000
+  gamma: 0.999
+  hidden_dims: 512,512,512
+  selective_critic_forward: true
+  foreach_target_update: true
+  async_batch_validation: true
+  defer_utd_metric_sync: true
+  sparse_utd_diagnostics: true
+  dsrl_variable_k_runtime: worker_chunk
+  dsrl_prune_unused_observables: true
+  dsrl_cache_static_robot_metadata: true
+  dp_infer_steps: 20
+  dp_cuda_graph: true
+  log_every_policy_steps: 1024
+  online_eval_every_env_steps: 0
+  force_thread_limits: true

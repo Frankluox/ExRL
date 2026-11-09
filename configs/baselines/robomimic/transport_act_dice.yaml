@@ -1,0 +1,15 @@
+benchmark: robomimic
+method: dice
+base_policy: act
+task: transport
+chunk_size: 50
+training:
+  n_envs: 4
+  eval_n_envs: 4
+  eval_episodes: 50
+  eval_interval: 200000
+  total_primitive_steps: 20000000
+  offline_replay_capacity: 1000000
+  online_replay_capacity: 1000000
+  eval_snapshot_interval: 0
+  lowdim_keys: robot0_eef_pos,robot0_eef_quat,robot0_gripper_qpos,robot1_eef_pos,robot1_eef_quat,robot1_gripper_qpos,object

@@ -1,0 +1,38 @@
+benchmark: adroit
+method: exrl_sac
+base_policy: dp
+task: hammer
+chunk_size: 32
+training:
+  n_envs: 4
+  env_horizon_override: 200
+  min_chunk_len: 1
+  gamma: 0.997
+  warmup_policy_steps: 512
+  batch_size: 256
+  replay_size: 1000000
+  critic_lr: 0.0003
+  hidden_dims: 512,512,512
+  critic_ensemble_size: 10
+  target_critic_subsample_size: 2
+  critic_use_layernorm: false
+  actor_use_layernorm: false
+  target_q_clip_min: -1000.0
+  target_q_clip_max: 0.0
+  critic_obs_state_mode: dp_raw
+  timeout_on_horizon: true
+  dp_infer_steps: 5
+  dp_sampler: ddim
+  n_step: 1
+  utd: 1.0
+  offline_phase0_policy_steps: 512
+  offline_phase1_critic_updates: 5000
+  pipeline: offline_critic_warmstart_sac
+  cql_alpha: 0.01
+  actor_lr: 5.0e-05
+  alpha_lr: 1.0e-05
+  init_alpha: 0.3
+  online_eval_every_env_steps: 200000
+  online_eval_n_envs: 4
+  online_eval_episodes: 50
+  total_policy_steps: 100000000

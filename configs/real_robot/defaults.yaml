@@ -1,0 +1,50 @@
+seed: 42
+chunk_size: 50
+control_hz: 20
+image_size: 128
+action_mode: state_delta
+discount: 0.997
+stages: 1
+reward: elapsed_time
+episodes: 200
+replay_capacity: 100000
+batch_size: 256
+warmup_episodes: 25
+warmup_transitions: 256
+warmup_updates: 10000
+utd: 16
+learner:
+  critic_lr: 0.0003
+  actor_lr: 5.0e-05
+  temp_lr: 1.0e-05
+  hidden_dims:
+  - 512
+  - 512
+  - 512
+  cnn_features:
+  - 32
+  - 32
+  - 32
+  - 32
+  cnn_strides:
+  - 2
+  - 1
+  - 1
+  - 1
+  encoder_type: small
+  latent_dim: 50
+  critic_use_layer_norm: false
+  actor_use_layer_norm: false
+  num_qs: 10
+  num_cameras: 2
+  target_critic_subsample_size: 2
+  critic_reduction: min
+  target_policy_mode: q_greedy
+  cql_alpha: 0.3
+  cql_temp: 1.0
+  target_q_clip_min: -1000.0
+  target_q_clip_max: 0.0
+  tau: 0.005
+  random_crop: true
+  color_jitter: false
+  aug_next: true

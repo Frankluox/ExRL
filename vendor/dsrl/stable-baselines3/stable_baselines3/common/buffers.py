@@ -114,15 +114,18 @@ class BaseBuffer(ABC):
         :return:
         """
         upper_bound = self.buffer_size if self.full else self.pos
+        if upper_bound <= 0:
+            raise ValueError("Cannot sample from an empty buffer.")
         if self.offline_mix_ratio > 0:
-            if self.offline_steps > 0 and self.pos > 2*self.offline_steps:
-                prob = np.ones(self.pos)
-                prob[:self.offline_steps] = 1 / self.offline_steps * self.offline_mix_ratio
-                prob[self.offline_steps:] = 1 / (self.pos - self.offline_steps) * (1 - self.offline_mix_ratio)
+            offline_steps = min(max(self.offline_steps, 0), upper_bound)
+            if offline_steps > 0 and upper_bound > 2 * offline_steps:
+                prob = np.ones(upper_bound)
+                prob[:offline_steps] = 1 / offline_steps * self.offline_mix_ratio
+                prob[offline_steps:] = 1 / (upper_bound - offline_steps) * (1 - self.offline_mix_ratio)
             else:
-                prob = np.ones(self.pos) / self.pos
+                prob = np.ones(upper_bound) / upper_bound
         else:
-            prob = np.ones(self.pos) / self.pos
+            prob = np.ones(upper_bound) / upper_bound
         prob = prob / prob.sum()
         batch_inds = np.random.choice(np.arange(upper_bound).astype(int), p=prob, size=batch_size)
         # batch_inds = np.random.randint(0, upper_bound, size=batch_size)
@@ -195,7 +198,10 @@ class ReplayBuffer(BaseBuffer):
     observations: np.ndarray
     next_observations: np.ndarray
     actions: np.ndarray
-    noise_actions: np.ndarray
+    noise_actions: Optional[np.ndarray]
+    next_noise_actions: Optional[np.ndarray]
+    base_actions: Optional[np.ndarray]
+    next_base_actions: Optional[np.ndarray]
     rewards: np.ndarray
     dones: np.ndarray
     timeouts: np.ndarray
@@ -235,13 +241,15 @@ class ReplayBuffer(BaseBuffer):
             # When optimizing memory, `observations` contains also the next observation
             self.next_observations = np.zeros((self.buffer_size, self.n_envs, *self.obs_shape), dtype=observation_space.dtype)
 
-        self.actions = np.zeros(
-            (self.buffer_size, self.n_envs, self.action_dim), dtype=self._maybe_cast_dtype(action_space.dtype)
-        )
-        self.noise_actions = np.zeros(
-            (self.buffer_size, self.n_envs, self.action_dim), dtype=self._maybe_cast_dtype(action_space.dtype)
-        )
+        self._action_dtype = self._maybe_cast_dtype(action_space.dtype)
+        self._action_storage_shape = (self.buffer_size, self.n_envs, self.action_dim)
+        self.actions = np.zeros(self._action_storage_shape, dtype=self._action_dtype)
+        self.noise_actions = None
+        self.next_noise_actions = None
+        self.base_actions = None
+        self.next_base_actions = None
         self.use_noise_actions = False
+        self.use_base_actions = False
 
         self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.dones = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
@@ -267,6 +275,17 @@ class ReplayBuffer(BaseBuffer):
                     f"replay buffer {total_memory_usage:.2f}GB > {mem_available:.2f}GB"
                 )
 
+    def _ensure_optional_action_pair(self, current_attr: str, next_attr: str) -> tuple[np.ndarray, np.ndarray]:
+        current_storage = getattr(self, current_attr)
+        if current_storage is None:
+            current_storage = np.zeros(self._action_storage_shape, dtype=self._action_dtype)
+            setattr(self, current_attr, current_storage)
+        next_storage = getattr(self, next_attr)
+        if next_storage is None:
+            next_storage = np.zeros(self._action_storage_shape, dtype=self._action_dtype)
+            setattr(self, next_attr, next_storage)
+        return current_storage, next_storage
+
     def add(
         self,
         obs: np.ndarray,
@@ -276,6 +295,9 @@ class ReplayBuffer(BaseBuffer):
         done: np.ndarray,
         infos: list[dict[str, Any]],
         noise_action: Optional[np.ndarray] = None,
+        next_noise_action: Optional[np.ndarray] = None,
+        base_action: Optional[np.ndarray] = None,
+        next_base_action: Optional[np.ndarray] = None,
     ) -> None:
         # Reshape needed when using multiple envs with discrete observations
         # as numpy cannot broadcast (n_discrete,) to (n_discrete, 1)
@@ -297,7 +319,20 @@ class ReplayBuffer(BaseBuffer):
         self.actions[self.pos] = np.array(action)
         if noise_action is not None:
             self.use_noise_actions = True
-            self.noise_actions[self.pos] = np.array(noise_action)
+            noise_actions, next_noise_actions = self._ensure_optional_action_pair("noise_actions", "next_noise_actions")
+            noise_actions[self.pos] = np.array(noise_action).reshape((self.n_envs, self.action_dim))
+        if next_noise_action is not None:
+            self.use_noise_actions = True
+            noise_actions, next_noise_actions = self._ensure_optional_action_pair("noise_actions", "next_noise_actions")
+            next_noise_actions[self.pos] = np.array(next_noise_action).reshape((self.n_envs, self.action_dim))
+        if base_action is not None:
+            self.use_base_actions = True
+            base_actions, next_base_actions = self._ensure_optional_action_pair("base_actions", "next_base_actions")
+            base_actions[self.pos] = np.array(base_action).reshape((self.n_envs, self.action_dim))
+        if next_base_action is not None:
+            self.use_base_actions = True
+            base_actions, next_base_actions = self._ensure_optional_action_pair("base_actions", "next_base_actions")
+            next_base_actions[self.pos] = np.array(next_base_action).reshape((self.n_envs, self.action_dim))
         self.rewards[self.pos] = np.array(reward)
         self.dones[self.pos] = np.array(done)
 
@@ -340,28 +375,35 @@ class ReplayBuffer(BaseBuffer):
         else:
             next_obs = self._normalize_obs(self.next_observations[batch_inds, env_indices, :], env)
 
-        if self.use_noise_actions:
-            data = (
-                self._normalize_obs(self.observations[batch_inds, env_indices, :], env),
-                self.actions[batch_inds, env_indices, :],
-                next_obs,
-                # Only use dones that are not due to timeouts
-                # deactivated by default (timeouts is initialized as an array of False)
-                (self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])).reshape(-1, 1),
-                self._normalize_reward(self.rewards[batch_inds, env_indices].reshape(-1, 1), env),
-                self.noise_actions[batch_inds, env_indices, :],
-            )
-        else:
-            data = (
-                self._normalize_obs(self.observations[batch_inds, env_indices, :], env),
-                self.actions[batch_inds, env_indices, :],
-                next_obs,
-                # Only use dones that are not due to timeouts
-                # deactivated by default (timeouts is initialized as an array of False)
-                (self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])).reshape(-1, 1),
-                self._normalize_reward(self.rewards[batch_inds, env_indices].reshape(-1, 1), env),
-            )
-        return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
+        observations = self.to_torch(self._normalize_obs(self.observations[batch_inds, env_indices, :], env))
+        actions = self.to_torch(self.actions[batch_inds, env_indices, :])
+        dones = self.to_torch(
+            (self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])).reshape(-1, 1)
+        )
+        rewards = self.to_torch(self._normalize_reward(self.rewards[batch_inds, env_indices].reshape(-1, 1), env))
+
+        noise_actions = None
+        next_noise_actions = None
+        base_actions = None
+        next_base_actions = None
+        if self.use_noise_actions and self.noise_actions is not None and self.next_noise_actions is not None:
+            noise_actions = self.to_torch(self.noise_actions[batch_inds, env_indices, :])
+            next_noise_actions = self.to_torch(self.next_noise_actions[batch_inds, env_indices, :])
+        if self.use_base_actions and self.base_actions is not None and self.next_base_actions is not None:
+            base_actions = self.to_torch(self.base_actions[batch_inds, env_indices, :])
+            next_base_actions = self.to_torch(self.next_base_actions[batch_inds, env_indices, :])
+
+        return ReplayBufferSamples(
+            observations=observations,
+            actions=actions,
+            next_observations=self.to_torch(next_obs),
+            dones=dones,
+            rewards=rewards,
+            noise_actions=noise_actions,
+            next_noise_actions=next_noise_actions,
+            base_actions=base_actions,
+            next_base_actions=next_base_actions,
+        )
 
     @staticmethod
     def _maybe_cast_dtype(dtype: np.typing.DTypeLike) -> np.typing.DTypeLike:

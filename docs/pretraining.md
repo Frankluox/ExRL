@@ -53,3 +53,7 @@ python pretrain.py --config configs/pretrain/dp_can_h50.yaml \
 ```
 
 Remove `--print-config` to train. Use a fresh output directory for each pretraining run.
+
+## Adroit DP
+
+Adroit uses a temporal U-Net instead of the Robomimic MLP. See [Adroit](adroit.md) for Minari conversion and the `configs/pretrain/adroit_dp.yaml` entry.

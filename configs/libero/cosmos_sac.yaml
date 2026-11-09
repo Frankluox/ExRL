@@ -1,0 +1,10 @@
+defaults:
+- ../defaults/libero.yaml
+benchmark: libero
+method: exrl_sac
+base_policy: cosmos
+task: cream_cheese
+learner:
+  target_policy_mode: actor
+  cql_alpha: 0.01
+  init_temperature: 0.3

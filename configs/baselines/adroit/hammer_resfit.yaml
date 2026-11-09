@@ -1,0 +1,18 @@
+benchmark: adroit
+method: resfit
+base_policy: dp
+task: hammer
+chunk_size: 32
+defaults:
+- ../../defaults/resfit.yaml
+training:
+  env_horizon: 200
+  gamma: 0.997
+  lowdim_keys: flat
+  residual_state_mode: dp_raw
+  offline_success_mode: minari_infos
+  actor_hidden_dims: 1024,1024,1024
+  critic_hidden_dims: 1024,1024,1024
+  reward_offset: 0.0
+  total_train_env_steps: 10000000
+  critic_use_layernorm: 0

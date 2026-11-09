@@ -1,0 +1,13 @@
+# Install in a separate environment from state-based simulation.
+numpy==1.26.4
+jax==0.5.0
+flax==0.10.2
+optax==0.2.4
+distrax==0.1.5
+orbax-checkpoint==0.11.1
+gym==0.26.2
+PyYAML>=6,<7
+opencv-python-headless>=4.8,<4.12
+h5py>=3.10,<4
+matplotlib>=3.7,<4
+tensorboardX>=2.6,<3

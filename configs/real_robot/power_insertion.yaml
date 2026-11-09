@@ -1,0 +1,16 @@
+defaults:
+- defaults.yaml
+task: power_insertion
+prompt: Insert the plug into the power strip.
+episode_steps: 450
+reward: step_cost
+warmup_episodes: 30
+warmup_transitions: 1
+warmup_updates: 5000
+batch_size: 64
+updates_per_episode: 400
+learner:
+  hidden_dims:
+  - 1024
+  - 1024
+  - 1024

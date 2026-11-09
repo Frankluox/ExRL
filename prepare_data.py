@@ -97,6 +97,7 @@ def prepare(source, task, output, filter_key=None, max_episodes=0):
         env = json.loads(env)
         (output / f"{task}.json").write_text(json.dumps(env, indent=2) + "\n")
     summary = dict(
+        source=str(Path(source).expanduser().resolve()),
         task=task,
         episodes=len(lengths),
         transitions=len(states),

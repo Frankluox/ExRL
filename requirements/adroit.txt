@@ -1,0 +1,5 @@
+-r common.txt
+gymnasium==1.2.3
+gymnasium-robotics==1.4.2
+mujoco==3.4.0
+minari>=0.5,<0.6

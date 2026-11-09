@@ -1,0 +1,14 @@
+benchmark: adroit
+method: ogpo
+base_policy: dp
+task: hammer
+chunk_size: 32
+training:
+  n_envs: 4
+  n_eval_envs: 4
+  online_steps: 10000000
+  utd: 1/16
+  discount: 0.997
+  max_episode_steps: 200
+  eval_episodes: 50
+  eval_interval: 200000

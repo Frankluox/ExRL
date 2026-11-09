@@ -1,0 +1,7 @@
+-r pixel.txt
+torch==2.5.1
+scipy>=1.10,<2
+Pillow>=10,<12
+mujoco==3.3.5
+robosuite==1.4.1
+# Install LIBERO and openpi-client separately; see docs/libero.md.

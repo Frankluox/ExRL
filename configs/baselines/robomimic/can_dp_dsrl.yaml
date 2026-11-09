@@ -1,0 +1,6 @@
+benchmark: robomimic
+method: dsrl
+base_policy: dp
+task: can
+chunk_size: 50
+native_config: configs/baselines/native/can_dp_dsrl.yaml

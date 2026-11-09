@@ -1,0 +1,18 @@
+benchmark: robomimic
+method: resfit
+base_policy: dp
+task: lift
+chunk_size: 50
+defaults:
+- ../../defaults/resfit.yaml
+training:
+  gamma: 0.997
+  env_horizon: 300
+  actor_hidden_dims: 1024,1024,1024
+  critic_hidden_dims: 1024,1024,1024
+  critic_use_layernorm: 0
+  residual_state_mode: stats_no_clip
+  offline_success_mode: last_frame
+  total_train_env_steps: 2000000
+  dp_infer_steps: 5
+  lowdim_keys: robot0_eef_pos,robot0_eef_quat,robot0_gripper_qpos,object

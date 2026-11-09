@@ -1,0 +1,6 @@
+benchmark: robomimic
+method: parl
+base_policy: act
+task: lift
+chunk_size: 50
+native_config: configs/baselines/native/lift_act_parl.yaml

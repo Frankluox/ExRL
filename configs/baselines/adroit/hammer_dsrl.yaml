@@ -1,0 +1,5 @@
+benchmark: adroit
+method: dsrl
+base_policy: dp
+task: hammer
+chunk_size: 32

@@ -1,0 +1,6 @@
+benchmark: robomimic
+method: policy_decorator
+base_policy: dp
+task: square
+chunk_size: 50
+native_config: configs/baselines/native/square_dp_policy_decorator.yaml

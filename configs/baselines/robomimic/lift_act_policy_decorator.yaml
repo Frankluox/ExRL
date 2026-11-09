@@ -1,0 +1,6 @@
+benchmark: robomimic
+method: policy_decorator
+base_policy: act
+task: lift
+chunk_size: 50
+native_config: configs/baselines/native/lift_act_policy_decorator.yaml

@@ -1,0 +1,11 @@
+benchmark: libero
+method: resfit
+base_policy: cosmos
+task: cream_cheese
+chunk_size: 50
+training:
+  data_mode: mixed
+  num_envs: 1
+  eval_episodes: 50
+  eval_interval: 30000
+  train_env_steps: 3000000

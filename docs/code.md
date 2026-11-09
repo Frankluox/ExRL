@@ -1,29 +1,46 @@
 # Code structure
 
-Start with the learning objective in [`exrl/algorithms/dp_q.py`](../exrl/algorithms/dp_q.py). The critic receives the state and predicted action chunk and returns a value for each execution length. The replay stores the executed length so the TD target uses the corresponding accumulated reward and discount. CQL compares values across possible lengths with the length observed in replay.
+The public entry points keep asset paths and task settings separate from learning code:
 
-| Location | Purpose |
-| --- | --- |
-| `train.py`, `evaluate.py`, `pretrain.py` | Command-line entry points |
-| `exrl/config.py` | YAML defaults, overrides, and experiment validation |
-| `exrl/algorithms/` | Critic, actor, replay, CQL, and TD updates |
-| `exrl/common/networks.py` | Shared actor and critic networks |
-| `exrl/runners/dp_q/` | DP ExRL-Q collection loop and online BC |
-| `exrl/runners/act_q/` | ACT ExRL-Q, online BC, and demonstration BC |
-| `exrl/runners/dp_sac/`, `act_sac/` | ExRL-SAC collection loops |
-| `exrl/runners/dp_demo/` | Demonstration segments as execution-length replay |
-| `exrl/runners/act_pretrain/` | ACT pretraining and dataset loaders |
-| `vendor/` | Bundled upstream dependencies |
+```text
+train.py / evaluate.py   Robomimic ExRL and benchmark launchers
+pretrain.py             DP / ACT pretraining, including Adroit DP
+prepare_data.py         Robomimic data conversion
+configs/                Shared defaults and task recipes
+exrl/
+  algorithms/           State-based execution-length Q / SAC learners
+  runners/              Robomimic policy loading, replay, collection and BC
+  adroit/               Adroit environments, DP adapter and learners
+  pixel/                Image-based Q / SAC, encoders and shared replay
+  libero/               LIBERO collection and frozen-policy servers
+baselines/              Baseline learners and policy adapters
+real_robot/             Piper collection, operator labels and training
+vendor/                 Bundled dependency subsets
+```
 
-Within each runner, `train.py` coordinates collection and updates, `environment.py` connects the task to chunk execution, `policy_loader.py` loads the base policy, and `options.py` defines advanced settings. Public experiment configurations select the settings needed for the paper experiments. Algorithm-specific replay formats and update rules live in their respective modules.
+## Learning and collection
 
-Online BC uses a separate successful-trajectory buffer in `online_bc.py`. Sampling respects episode boundaries. The base-policy loss and the initial-policy constraint are implemented in `policy_adapter.py` and `diffusion.py`. ACT's demonstration mixture and fractional update schedule are in `act_offline_bc.py` and `bc_update_schedule.py`.
+An ExRL transition records the query observation, predicted chunk, chosen execution length, accumulated reward, actual executed length, and next query observation. The critic's target uses the corresponding multi-step discount. The discrete CQL term regularizes the execution-length values. ExRL-Q selects lengths from the critic; ExRL-SAC learns a categorical actor.
+
+Robomimic's `exrl/config.py` resolves YAML defaults and translates UTD into updates for the configured number of parallel environments. `exrl/experiment.py` routes the other benchmarks and baselines to their native learners without changing their objectives.
+
+Online BC buffers successful trajectories and trains the base policy with its native loss. The teacher constraint anchors the policy to its initial behavior. Demonstration augmentation can feed the imitation buffer or, for the supported DP recipe, provide off-policy transitions to the execution-length critic.
+
+Image-based ExRL shares its encoder, learner, replay, and checkpoint code across LIBERO and real-robot training. Collection is benchmark-specific: LIBERO advances simulation steps, while the robot collector also accounts for elapsed physical time and operator stage labels.
 
 ## Tests
 
+In the state-based environment:
+
 ```bash
 pip install pytest
-python -m pytest tests -q
+pytest -q tests --ignore=tests/test_pixel_learner.py
 ```
 
-The CPU tests cover configuration resolution, variable-length TD targets, CQL, and BC replay. The integration tests additionally exercise data preparation, tiny DP/ACT pretraining, and checkpoint reloads. They use synthetic data and do not reproduce the paper's learning curves.
+In the image-learner environment:
+
+```bash
+JAX_PLATFORMS=cpu pytest -q tests/test_pixel_learner.py tests/test_real_rewards.py tests/test_real_collector.py
+```
+
+The tests cover learning targets, conservative losses, replay, BC, update schedules, checkpoint restoration, and simulated robot timing. They do not require model weights or a connected robot. Benchmark-level runs additionally require the assets described in each guide.

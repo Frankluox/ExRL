@@ -1,0 +1,12 @@
+benchmark: adroit
+task: door
+training:
+  num_epochs: 2
+  epoch_steps: 1000
+  batch_size: 1024
+  save_every_n_epochs: 1
+  observation_horizon: 1
+  action_horizon: 32
+  prediction_horizon: 32
+  ddim_steps: 5
+  down_dims: [128, 256, 512]

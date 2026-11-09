@@ -1,0 +1,6 @@
+benchmark: robomimic
+method: parl
+base_policy: act
+task: tool_hang
+chunk_size: 50
+native_config: configs/baselines/native/tool_hang_act_parl.yaml

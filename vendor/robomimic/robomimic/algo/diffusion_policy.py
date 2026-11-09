@@ -27,10 +27,6 @@ import robomimic.utils.torch_utils as TorchUtils
 import robomimic.utils.tensor_utils as TensorUtils
 import robomimic.utils.obs_utils as ObsUtils
 
-import sys
-sys.path.append("assets/local") # 确保能找到模块
-from f_control_as_a_function import ActionScheduler
-from OOD_detect_as_a_function import OODMonitor
 
 import numpy as np
 
@@ -74,32 +70,7 @@ class DiffusionPolicyUNet(PolicyAlgo):
             device=device
         )
 
-        # [新增] 初始化调度器和日志变量
-        try:
-            # 确保 path 能找到你写的那个文件
-            # 初始化调度器
-            self.action_scheduler = ActionScheduler(safety_lambda=1.0, power_threshold=0.95)
-            self.ood_monitor = OODMonitor(
-                    max_prediction_len=self.algo_config.horizon.action_horizon, # 模型输出长度 (T)
-                    max_ood_bound=self.algo_config.horizon.action_horizon # OOD 严重时的强制执行长度
-                )
-            print(self.ood_monitor.max_len)
-            print("Successfully initialized ActionScheduler and OODMonitor in DiffusionPolicyUNet.")
-        except Exception as e:
-            print(f"Warning: Could not initialize ActionScheduler or OODMonitor: {e}")
-            self.action_scheduler = None
-            self.ood_monitor = None
-            raise e
-            
-        self.last_execution_info = None
-
-        # 3. 状态管理变量
-        self.action_queue = deque()      # 存储当前正在执行的动作片段
-        self.last_plan_executed_len = 0  # 上一次规划实际执行了多少步 (传给 OODMonitor 用)
-        self.current_raw_action = None   # 缓存当前的完整预测
-
-        self.use_action_scheduler = False 
-        self.use_ood_monitor = False
+        self.action_queue = deque()
 
     def _create_networks(self):
         """
@@ -325,181 +296,16 @@ class DiffusionPolicyUNet(PolicyAlgo):
         return log
     
     def reset(self):
-        """
-        Reset algo state to prepare for environment rollouts.
-        """
-        # setup inference queues
-        To = self.algo_config.horizon.observation_horizon
-        Ta = self.algo_config.horizon.action_horizon
-        obs_queue = deque(maxlen=To)
-        action_queue = deque(maxlen=Ta)
-        self.obs_queue = obs_queue
-        self.action_queue = action_queue
+        """Clear the pending actions before starting an episode."""
+        self.obs_queue = deque(maxlen=self.algo_config.horizon.observation_horizon)
+        self.action_queue = deque(maxlen=self.algo_config.horizon.action_horizon)
 
-        # 2. [新增] 重置自定义执行记录
-        self.last_plan_executed_len = 0
-        self.last_execution_info = None
-
-        # 3. [新增] 重置 OODMonitor 内部缓存
-        if hasattr(self, 'ood_monitor') and self.ood_monitor is not None:
-            self.ood_monitor.prev_prediction_buffer = None
-            self.ood_monitor.loss_history.clear()
-            self.ood_monitor.current_ood_score = 0.0
-
-        # [新增] 重置 ActionScheduler
-        if self.action_scheduler is not None:
-            self.action_scheduler.reset()
-    
-
-    
     def get_action(self, obs_dict, goal_dict=None):
-        # print("Use?", self.use_action_scheduler, self.use_ood_monitor)
-        if len(self.action_queue) == 0:
-            # 1. 执行模型推理
-            action_sequence = self._get_action_trajectory(obs_dict=obs_dict)
-            action_sequence_2d = action_sequence.squeeze(0)
-            action_sequence_np = action_sequence_2d.cpu().detach().numpy()
-
-            # 2. 初始默认值（对应“都不开”的情况）
-            # 默认执行长度为模型输出的全长
-            final_len = action_sequence_np.shape[0]
-            target_len = final_len
-            lower_bound = 1
-            ood_score = 0.0
-            reason = "default_full_horizon"
-            ood_metrics = {}
-
-            # 3. [模式：只开 Action Scheduler 或 两个都开] 
-            # 计算基于复杂度的截断长度（上限控制）
-            # print(self.action_scheduler)
-            if self.use_action_scheduler and self.action_scheduler is not None:
-                _, _, target_len, reason = self.action_scheduler.step(action_sequence_np, None)
-                final_len = target_len
-
-                # print("length after scheduler",final_len)
-            # 4. [模式：两个都开]
-            # 计算基于 OOD 的执行下界（下界控制/平滑）
-            if self.use_ood_monitor and self.ood_monitor is not None:
-                ood_result = self.ood_monitor.step(
-                    current_action_raw=action_sequence_np,
-                    last_execution_len=self.last_plan_executed_len
-                )
-                lower_bound = ood_result["suggested_bound"]
-                ood_score = ood_result["ood_score"]
-                ood_metrics = ood_result["metrics"]
-                
-                # 融合逻辑：如果 OOD 严重，强制拉长执行步数以覆盖不稳定的过渡期
-                # 如果 use_action_scheduler 为 False，final_len 默认为最大长度，max 不起作用
-                final_len = max(final_len, lower_bound)
-
-            # 5. 安全检查与状态更新
-            final_len = int(np.clip(final_len, 1, action_sequence_np.shape[0]))
-            self.last_plan_executed_len = final_len
-
-            # 6. 填充动作队列
-            chunk = action_sequence_2d[:final_len]
-            self.action_queue.extend(chunk)
-
-            # print("chunk_size", chunk.shape)
-
-            # 7. 日志记录
-            self.last_execution_info = {
-                "final_len": final_len,
-                "full_action_chunk": action_sequence_np,
-                "use_sched": self.use_action_scheduler,
-                "use_ood": self.use_ood_monitor,
-                "ood_score": ood_score,
-                "ood_suggested_bound": lower_bound,
-                "reason": reason,
-                "step_log": True
-            }
-            
-            mode_str = f"Sched={self.use_action_scheduler}, OOD={self.use_ood_monitor}"
-            print(f"[Policy Replan] {mode_str} | Final Len: {final_len} | Reason: {reason}")
-
-        else:
-            if self.last_execution_info is not None:
-                self.last_execution_info["step_log"] = False
-        # print("Action queue length:", len(self.action_queue))
+        """Predict a new chunk when the previous chunk has been executed."""
+        if not self.action_queue:
+            self.action_queue.extend(self._get_action_trajectory(obs_dict=obs_dict)[0])
         return self.action_queue.popleft().unsqueeze(0)
 
-
-    # def get_action(self, obs_dict, goal_dict=None):
-        # """
-        # Get policy action outputs.
-
-        # Args:
-        #     obs_dict (dict): current observation [1, Do]
-        #     goal_dict (dict): (optional) goal
-
-        # Returns:
-        #     action (torch.Tensor): action tensor [1, Da]
-        # """
-        # # obs_dict: key: [1,D]
-        # To = self.algo_config.horizon.observation_horizon
-        # Ta = self.algo_config.horizon.action_horizon
-
-        # # [修改] 如果队列为空，进行推理并记录信息
-        # if len(self.action_queue) == 0:
-        #     # no actions left, run inference
-        #     # [1,T,Da]
-        #     action_sequence = self._get_action_trajectory(obs_dict=obs_dict)
-
-        #     # [新增] --- 自适应截断逻辑开始 ---
-        #     action_sequence_2d = action_sequence.squeeze(0) # [T, Da]
-        #     action_sequence_np = action_sequence_2d.cpu().detach().numpy() # 转为 numpy
-
-        #     # 调用调度器
-        #     # 注意：这里传入 None 作为 prev_action，如果需要更精细的控制，
-        #     # 你可能需要维护一个 prev_action buffer
-        #     chunk, is_truncated, reason = self.action_scheduler.step(action_sequence_np, None)
-
-        #     truncation_length = len(chunk)
-
-        #     print(f"Action sequence length: {action_sequence_np.shape[0]}, Truncated length: {truncation_length}, Reason: {reason}")
-
-        #     # 将截断后的 chunk 转回 tensor 并放入队列
-        #     chunk_tensor = torch.as_tensor(chunk, dtype=action_sequence.dtype, device=action_sequence.device)
-        #     self.action_queue.extend(chunk_tensor)
-
-        #     # [新增] --- 记录日志 ---
-        #     # 我们记录完整的原始输出、截断后的长度、以及原因
-        #     self.last_execution_info = {
-        #         "full_action_chunk": action_sequence_np,  # 原始完整输出
-        #         "truncation_length": truncation_length,   # 实际执行长度
-        #         "reason": reason,
-        #         "step_log": True # 标记这是一个新的推理步
-        #     }
-        #     # import sys
-        #     # sys.path.append("assets/local")
-        #     # from f_control_as_a_function import ActionScheduler
-        #     # action_scheduler = ActionScheduler(safety_lambda=3.3, power_threshold=0.95, dct_scale = 10.0, trend_ratio = 0.2, freq_smoothing_factor = 2.0)
-        #     # action_sequence_2d = action_sequence.squeeze(0)
-        #     # action_sequence_np = action_sequence_2d.cpu().numpy()
-        #     # chunk, _, __ = action_scheduler.step(action_sequence_np, None)
-        #     # chunk_tensor = torch.as_tensor(chunk, dtype=action_sequence.dtype)
-        #     # chunk_tensor = chunk_tensor.to(action_sequence.device)
-        #     # action_sequence = chunk_tensor.unsqueeze(0)
-        #     # print(chunk.shape)
-
-
-        #     # # put actions into the queue
-        #     # self.action_queue.extend(action_sequence[0])
-        # else:
-        #     # [新增] 如果是从队列里取动作，标记这不是新的推理步
-        #      if self.last_execution_info is not None:
-        #          self.last_execution_info["step_log"] = False
-        
-
-
-        # # has action, execute from left to right
-        # # [Da]
-        # action = self.action_queue.popleft()
-        
-        # # [1,Da]
-        # action = action.unsqueeze(0)
-        # return action
-        
     def _get_action_trajectory(self, obs_dict, goal_dict=None):
         assert not self.nets.training
         To = self.algo_config.horizon.observation_horizon
