@@ -13,6 +13,14 @@ pip install -e .
 
 Install your controller SDK and model client separately. The base policy may run in the same process or on a model server. The core does not require ROS or OpenPI.
 
+## Prepare a base policy
+
+Use an existing policy that predicts action chunks, or train one on demonstrations from your setup. The RL collector only needs its inference interface; it does not depend on a particular policy-training framework.
+
+If you use OpenPI, implement a `DataConfigFactory` following `exrl/pretraining/piper.py`, and set `data_factory: my_integration:MyRobotData` in a copied robot pretraining recipe. Additional constructor arguments go under `data_options`. The factory maps dataset columns to model observations and defines the action convention; use the same transforms during inference.
+
+The [Piper example](#included-example-piper-with-π₀₅) below includes dataset conversion and π₀.₅ fine-tuning.
+
 ## Connect a robot and policy
 
 Implement the interfaces in `real_robot/interfaces.py`:
@@ -52,6 +60,8 @@ Replace these two factories with your integration. `--check` reads observations 
 
 Start from `configs/real_robot/task.example.yaml`. Set the chunk size, control rate, episode time limit, camera names, and number of completion stages. The image critic infers state/action dimensions from the observations and predicted chunk.
 
+For update scheduling, `utd` sets gradient updates per collected transition. An explicit `updates_per_episode` overrides that ratio; leave it unset to tune UTD. See the [tuning tips](../README.md#tips-for-hyperparameter-tuning) for learning speed, network width, and discount settings.
+
 The critic uses mean/std statistics for state and actions. Supply a JSON with `state_mean`, `state_std`, `action_mean`, and `action_std`, or an OpenPI `norm_stats.json`. These statistics must match the action representation used by the critic. By default, the critic receives the policy's action coordinates unchanged. For state-relative actions, set `action_mode: state_delta` and list explicit `[action_index, state_index]` pairs under `action_state_indices`; this changes critic inputs, not the actions sent to the robot.
 
 ## Why elapsed-time costs?
@@ -78,7 +88,52 @@ Add `--evaluate 20 --resume outputs/my_task/latest.pkl` to evaluate the learned 
 
 The Piper adapter converts six joint coordinates and a gripper command, synchronizes two RGB views with feedback, and uses ROS. Install the Piper ROS driver and OpenPI client in addition to the core dependencies. Copy `configs/real_robot/piper.example.yaml`, then fill in your ROS topics, joint limits, offsets, and camera crops. The command topic in this example expects Piper raw units.
 
-In OpenPI's model environment, serve a task-finetuned checkpoint:
+### Demonstrations and fine-tuning
+
+Install [OpenPI](https://github.com/Physical-Intelligence/openpi) in its own model environment. Run the commands below from ExRL's repository root with OpenPI's Python:
+
+```bash
+export OPENPI_ROOT=/path/to/openpi
+export PYTHONPATH="$PWD"
+```
+
+The included π₀.₅ example uses two RGB views and seven-dimensional state/action vectors: six joint angles in radians followed by gripper closed fraction in `[0, 1]`. Store absolute joint targets in demonstrations; the training transform converts the first six action coordinates to offsets from the query state. The gripper remains absolute.
+
+The converter accepts an HDF5 file with episodes under `data/demo_0`, `data/demo_1`, etc. Each episode contains:
+
+| Dataset | Shape and convention |
+| --- | --- |
+| `image`, `wrist_image` | `N × height × width × 3`, uint8 RGB |
+| `state` | `N × 7`, observed joints and gripper |
+| `actions` | `N × 7`, absolute commanded targets |
+
+Streams must be synchronized at 20 Hz. Convert a dataset with:
+
+```bash
+"$OPENPI_ROOT/.venv/bin/python" -m exrl.pretraining.piper_data \
+  --dataset data/piper_demos.hdf5 --output-root data/lerobot \
+  --repo-id local/piper_task --prompt "Stack the cube on the other cube."
+```
+
+Initialize from the released π₀.₅ base weights. Compute statistics, then train:
+
+```bash
+"$OPENPI_ROOT/.venv/bin/python" pretrain.py \
+  --config configs/pretrain/real_robot/pi05.yaml \
+  --data data/lerobot --output models/pi05_piper \
+  --upstream "$OPENPI_ROOT" --norm-stats
+
+"$OPENPI_ROOT/.venv/bin/python" pretrain.py \
+  --config configs/pretrain/real_robot/pi05.yaml \
+  --data data/lerobot --output models/pi05_piper \
+  --upstream "$OPENPI_ROOT" --base-policy /path/to/pi05_base_checkpoint
+```
+
+The stacking recipe uses 900 updates. For folding, convert to `local/clothing_folding` with its task instruction and `--crop-size 360`, then select `configs/pretrain/real_robot/clothing_folding.yaml`. It uses 10,000 updates of the action expert while keeping the vision/language backbone frozen. Match the image crop during deployment. Retain each checkpoint's `params/` and `assets/` directories, including normalization statistics.
+
+### Serve the policy and run ExRL
+
+In OpenPI's model environment, serve the task-finetuned checkpoint:
 
 ```bash
 PYTHONPATH=/path/to/ExRL /path/to/openpi/.venv/bin/python \
@@ -97,4 +152,4 @@ python -m real_robot.train \
 
 The example tasks have one stage for stacking/insertion, three for folding, and five for organization. Set `episode_seconds` to a suitable task budget for your setup, accounting for both control and model-inference time.
 
-See [generalist base-policy training](generalist_pretraining.md) for the Piper demonstration format and fine-tuning code. Automated integration tests use software inputs and do not operate hardware.
+Automated integration tests use software inputs and do not operate hardware.

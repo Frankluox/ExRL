@@ -50,4 +50,4 @@ DSRL, ResFiT, OGPO, and DICE-RL configurations are in `configs/baselines/adroit/
 
 ResFiT and DICE-RL additionally use the original Minari HDF5 file for explicit success and termination labels. Create `data/adroit/door/minari.hdf5` as a symlink to that dataset's `main_data.hdf5`, or set `assets.minari_hdf5` in a copied YAML. These labels are necessary: Adroit's dense dataset rewards do not uniquely identify task success. The converted demonstrations must come from the same Minari dataset and preserve its episode order.
 
-The native trainers evaluate during learning. ResFiT and DICE-RL also support `--resume PATH --set eval_only=true` with the original experiment configuration.
+See the [baseline guide](baselines.md) for the method overview and supported combinations. The native trainers evaluate during learning. ResFiT and DICE-RL also support `--resume PATH --set eval_only=true` with the original experiment configuration.

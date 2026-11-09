@@ -18,7 +18,7 @@ A dash means that this repository does not provide that combination. DSRL and OG
 
 ## Run a baseline
 
-Prepare the Robomimic assets as described in the main README, then select a recipe:
+Follow the [Robomimic guide](robomimic.md) to install the environment and prepare demonstrations and a base policy, then select a recipe:
 
 ```bash
 python train.py \
@@ -28,7 +28,7 @@ python train.py \
   --output outputs/can_resfit
 ```
 
-The same command selects `can_dp_dsrl.yaml`, `can_dp_policy_decorator.yaml`, `can_dp_parl.yaml`, `can_dp_ogpo.yaml`, or `can_dp_dice.yaml`. ACT configurations take a LeRobot checkpoint directory. Use the simulator versions in [experiment settings](experiments.md); Tool Hang requires its own environment.
+The same command selects `can_dp_dsrl.yaml`, `can_dp_policy_decorator.yaml`, `can_dp_parl.yaml`, `can_dp_ogpo.yaml`, or `can_dp_dice.yaml`. ACT configurations take a LeRobot checkpoint directory. Use the simulator versions in [the Robomimic guide](robomimic.md#simulator-versions); Tool Hang requires its own environment.
 
 ResFiT and DICE-RL need the demonstration dataset, and PA-RL uses demonstrations on Transport and Tool Hang. `prepare_data.py` records the original HDF5 location in `dataset_info.json`; keep that file available. Offline replay caches are built on the first run and reused subsequently.
 
