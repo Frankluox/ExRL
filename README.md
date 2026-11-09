@@ -14,7 +14,7 @@
 
 ## Overview
 
-Adapting pretrained robot policies with reinforcement learning can require substantial interaction data, especially when long action chunks make the action space high-dimensional. ExRL addresses this challenge by learning how long to execute each predicted action chunk before replanning, enabling sample-efficient adaptation through a small discrete decision space. Across simulation and real robots, ExRL substantially improves success rates with limited interaction, including for π₀.₅ on contact-rich and long-horizon manipulation tasks.
+ExRL provides sample-efficient RL adaptation for long-chunk robot policies. It learns how long to execute each predicted chunk before replanning, using a single discrete decision regardless of chunk size. This lightweight approach substantially improves success rates in simulation and on real robots, including π₀.₅ on contact-rich and long-horizon tasks.
 
 ## Getting started
 
