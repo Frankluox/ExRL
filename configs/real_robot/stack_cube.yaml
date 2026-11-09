@@ -1,5 +1,5 @@
 defaults:
-- defaults.yaml
+- piper_defaults.yaml
 task: stack_cube
 prompt: Stack the cube on the other cube.
 episode_seconds: 16

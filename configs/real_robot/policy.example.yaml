@@ -1,0 +1,2 @@
+factory: real_robot.example_adapter:make_policy
+options: {}

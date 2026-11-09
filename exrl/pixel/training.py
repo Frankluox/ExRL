@@ -43,7 +43,7 @@ def make_agent(config, observation):
     return PixelExRL(
         config["seed"],
         stack_rows([observation]),
-        np.zeros((1, config["chunk_size"], 7), np.float32),
+        np.zeros((1, *observation["actions"].shape), np.float32),
         num_discrete_actions=config["chunk_size"],
         action_id_offset=1,
         **kwargs,

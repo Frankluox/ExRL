@@ -4,7 +4,7 @@ The public entry points keep asset paths and task settings separate from learnin
 
 ```text
 train.py / evaluate.py   Robomimic ExRL and benchmark launchers
-pretrain.py             DP / ACT pretraining, including Adroit DP
+pretrain.py             DP / ACT pretraining and OpenPI / Cosmos fine-tuning
 prepare_data.py         Robomimic data conversion
 configs/                Shared defaults and task recipes
 exrl/
@@ -13,8 +13,9 @@ exrl/
   adroit/               Adroit environments, DP adapter and learners
   pixel/                Image-based Q / SAC, encoders and shared replay
   libero/               LIBERO collection and frozen-policy servers
+  pretraining/          Generalist-policy data conversion and training adapters
 baselines/              Baseline learners and policy adapters
-real_robot/             Piper collection, operator labels and training
+real_robot/             Robot/policy interfaces, collection and optional Piper adapter
 vendor/                 Bundled dependency subsets
 ```
 
@@ -25,6 +26,8 @@ An ExRL transition records the query observation, predicted chunk, chosen execut
 Robomimic's `exrl/config.py` resolves YAML defaults and translates UTD into updates for the configured number of parallel environments. `exrl/experiment.py` routes the other benchmarks and baselines to their native learners without changing their objectives.
 
 Online BC buffers successful trajectories and trains the base policy with its native loss. The teacher constraint anchors the policy to its initial behavior. Demonstration augmentation can feed the imitation buffer or, for the supported DP recipe, provide off-policy transitions to the execution-length critic.
+
+Robot and policy adapters expose the interfaces in `real_robot/interfaces.py`; camera names and state/action dimensions are not tied to a particular robot.
 
 Image-based ExRL shares its encoder, learner, replay, and checkpoint code across LIBERO and real-robot training. Collection is benchmark-specific: LIBERO advances simulation steps, while the robot collector also accounts for elapsed physical time and operator stage labels.
 

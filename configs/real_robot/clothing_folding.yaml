@@ -1,5 +1,5 @@
 defaults:
-- defaults.yaml
+- piper_defaults.yaml
 task: clothing_folding
 prompt: Fold the clothing.
 episode_seconds: 60

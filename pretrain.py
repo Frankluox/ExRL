@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pretrain DP or ACT on the configured benchmark demonstrations."""
+"""Train or fine-tune a base policy on task demonstrations."""
 
 import argparse
 import os
@@ -15,10 +15,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True, help="YAML in configs/pretrain/")
     parser.add_argument(
-        "--data", required=True, help="Prepared benchmark data directory or Adroit HDF5"
+        "--data", required=True, help="Prepared data directory; see the selected benchmark guide"
     )
     parser.add_argument("--output", required=True)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--base-policy", help="Initial OpenPI or Cosmos checkpoint")
+    parser.add_argument("--upstream", help="OpenPI checkout for its native trainer")
+    parser.add_argument("--norm-stats", action="store_true", help="Compute OpenPI normalization")
+    parser.add_argument("--resume", action="store_true", help="Resume OpenPI fine-tuning")
     parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
     parser.add_argument("--print-config", action="store_true")
     args = parser.parse_args()
@@ -37,6 +41,11 @@ def main():
         if parts[-1] not in target:
             raise ValueError(f"Unknown setting: {key}")
         target[parts[-1]] = yaml.safe_load(value)
+
+    if config.get("backend") in ("openpi", "cosmos"):
+        from importlib import import_module
+
+        return import_module(f"exrl.pretraining.{config['backend']}").run(config, args)
 
     if config.get("benchmark") == "adroit":
         from exrl.adroit.pretrain_config import build_parser, build_config

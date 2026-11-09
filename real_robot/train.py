@@ -1,4 +1,4 @@
-"""Train or evaluate ExRL-Q on a configured Piper robot."""
+"""Train or evaluate ExRL-Q using robot and base-policy adapters."""
 
 from __future__ import annotations
 
@@ -9,18 +9,19 @@ from pathlib import Path
 
 import numpy as np
 
-from exrl.config import load_config, merge
+from exrl.config import load_config
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True)
+    parser.add_argument("--robot", required=True, help="Robot adapter YAML")
     parser.add_argument(
-        "--robot", required=True, help="Local ROS topics, crop and calibration YAML"
+        "--normalization",
+        required=True,
+        help="State/action mean-std JSON or OpenPI norm_stats.json",
     )
-    parser.add_argument("--normalization", required=True, help="Base-policy norm_stats.json")
-    parser.add_argument("--host", default="localhost")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--policy", required=True, help="Base-policy adapter YAML")
     parser.add_argument("--output", default="outputs/real_robot")
     parser.add_argument("--resume")
     parser.add_argument("--evaluate", type=int, metavar="EPISODES")
@@ -31,27 +32,26 @@ def main():
         help="Check inputs and policy inference without publishing actions",
     )
     args = parser.parse_args()
-    config, robot_config = load_config(args.config), load_config(args.robot)
+    config = load_config(args.config)
+    config["learner"]["num_cameras"] = len(config["camera_keys"])
     from real_robot.observations import load_normalization, critic_observation
-    from real_robot.piper import PiperRobot
-    from real_robot.policy import PolicyClient
+    from real_robot.interfaces import load_component
     from real_robot.training import make_agent, train, restore, stack_rows
 
     stats = load_normalization(args.normalization)
-    robot = PiperRobot(robot_config)
+    robot = load_component(args.robot, config)
     try:
-        policy = PolicyClient(
-            args.host,
-            args.port,
-            config["prompt"],
-            config["chunk_size"],
-            config["seed"],
-            config["action_mode"],
-        )
+        policy = load_component(args.policy, config)
         frame = robot.observe()
         chunk = policy.predict(frame)
         observation = critic_observation(
-            frame, chunk, stats, config["image_size"], config["action_mode"]
+            frame,
+            chunk,
+            stats,
+            config["image_size"],
+            config["action_mode"],
+            config["camera_keys"],
+            config.get("action_state_indices", []),
         )
         if args.check:
             print("Camera, feedback, normalization and policy inference are ready.")
@@ -87,6 +87,8 @@ def main():
         else:
             train(collector, agent, config, args.output, args.resume)
     finally:
+        if "policy" in locals() and hasattr(policy, "close"):
+            policy.close()
         robot.close()
 
 

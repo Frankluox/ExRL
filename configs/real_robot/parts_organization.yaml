@@ -1,9 +1,8 @@
 defaults:
-- defaults.yaml
+- piper_defaults.yaml
 task: parts_organization
 prompt: Put the parts in the box and close the lid.
-episode_steps: 1021
-reward: stage_bonus
+episode_seconds: 51.05
 stages: 5
 warmup_episodes: 29
 warmup_transitions: 1
@@ -15,4 +14,3 @@ learner:
   - 1024
   - 1024
   - 1024
-  target_q_clip_max: 1000.0

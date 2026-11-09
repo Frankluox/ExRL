@@ -1,65 +1,100 @@
-# Real-robot ExRL
+# ExRL on your robot
 
-The real-robot implementation trains an image-conditioned execution-length critic around a frozen π₀.₅ policy. It contains the training and evaluation loops, reward calculation, replay, operator labels, and a Piper ROS interface. The robot driver and OpenPI model server run separately.
+ExRL learns execution lengths around an existing action-chunked policy. Its collector, replay, critic, reward, and training loop are independent of the robot SDK and policy architecture. Your integration supplies observations, primitive-action execution, and chunk inference. Piper with π₀.₅ is one included adapter.
 
-## Components
+## Installation
 
-- `real_robot/collector.py` executes a selected prefix at 20 Hz and records the next query observation.
-- `real_robot/rewards.py` implements primitive-step rewards and elapsed-time rewards, including policy-inference time.
-- `real_robot/observations.py` applies camera crops and checkpoint normalization.
-- `real_robot/piper.py` reads synchronized camera/robot observations and publishes joint commands.
-- `real_robot/training.py` updates the shared image critic and saves training state.
-
-Power insertion and parts organization use the original step-based rewards. Stack cube and clothing folding use elapsed-time costs: early RL can select short lengths frequently, so accounting for inference time encourages improvements in physical completion time as well as action efficiency.
-
-## Installation and robot configuration
-
-Use a dedicated Python environment with access to your ROS installation:
+Use a separate Python environment for the image-based RL learner:
 
 ```bash
 pip install -r requirements/real-robot.txt
 pip install -e .
-pip install -e /path/to/openpi/packages/openpi-client
 ```
 
-Start the robot driver separately. In OpenPI's model environment, start the frozen policy server without installing ExRL's bundled dependencies:
+Install your controller SDK and model client separately. The base policy may run in the same process or on a model server. The core does not require ROS or OpenPI.
+
+## Connect a robot and policy
+
+Implement the interfaces in `real_robot/interfaces.py`:
+
+| Method | Contract |
+| --- | --- |
+| `robot.observe(after=None)` | Return `state`, configured RGB images, and `time` from the collector host's monotonic clock. With `after`, wait for a fresh observation captured after that boundary. |
+| `robot.command(action)` | Submit one primitive action in the coordinates expected by your controller. ExRL handles the control period. |
+| `robot.close()` | Release connections and subscriptions. |
+| `policy.predict(observation)` | Return a NumPy array shaped `(chunk_size, action_dim)` in the same coordinates accepted by `command`. |
+
+State and action dimensions need not match. Images are `uint8` RGB arrays; `camera_keys` selects their names and order. Put hardware-specific unit conversions, camera synchronization, controller limits, and model input transforms in the adapters. If your cameras use a different clock, convert timestamps to the collector host's clock before returning observations.
+
+Each adapter has a factory `make_robot(options, task)` or `make_policy(options, task)`. A small YAML selects it:
+
+```yaml
+factory: my_integration:make_robot
+options:
+  address: robot.local
+```
+
+The policy has its own YAML with the same format. `task` is the resolved experiment configuration, including the prompt and chunk size. For a stochastic policy, optional `rng_state()` and `restore_rng(state)` methods preserve its sampling stream across checkpoints.
+
+`real_robot/example_adapter.py` is a minimal software-only implementation with four-dimensional actions and one camera. Check the complete interface without hardware:
+
+```bash
+python -m real_robot.train \
+  --config configs/real_robot/task.example.yaml \
+  --robot configs/real_robot/robot.example.yaml \
+  --policy configs/real_robot/policy.example.yaml \
+  --normalization configs/real_robot/normalization.example.json --check
+```
+
+Replace these two factories with your integration. `--check` reads observations and queries the policy but never calls `robot.command`.
+
+## Task configuration and normalization
+
+Start from `configs/real_robot/task.example.yaml`. Set the chunk size, control rate, episode time limit, camera names, and number of completion stages. The image critic infers state/action dimensions from the observations and predicted chunk.
+
+The critic uses mean/std statistics for state and actions. Supply a JSON with `state_mean`, `state_std`, `action_mean`, and `action_std`, or an OpenPI `norm_stats.json`. These statistics must match the action representation used by the critic. By default, the critic receives the policy's action coordinates unchanged. For state-relative actions, set `action_mode: state_delta` and list explicit `[action_index, state_index]` pairs under `action_state_indices`; this changes critic inputs, not the actions sent to the robot.
+
+## Why elapsed-time costs?
+
+During early training, the execution-length policy can favor very short prefixes. Each prefix requires another base-policy query, so frequent replanning can make physical rollouts slow. The reward therefore charges elapsed time from one query observation to the next, including inference and execution. Resetting the scene, waiting between episodes, and updating the critic are outside that interval.
+
+For multi-stage tasks, each unfinished stage contributes to the time cost. Completing a stage reduces subsequent costs; completing the last stage ends the episode. Discounting uses the same elapsed-time interval. All provided robot recipes use this objective.
+
+## Train and evaluate
+
+```bash
+python -m real_robot.train \
+  --config task.yaml --robot robot.yaml --policy policy.yaml \
+  --normalization normalization.json --output outputs/my_task
+```
+
+Before each episode, reset the scene and enter `start`. During execution, enter `s` for a completed stage, `f` for failure, or `q` to end the session. Labels are timestamped independently of policy inference. You retain control of physical resets and controller enable/disable.
+
+The learner first collects random-length warmup episodes, then updates the execution-length critic between rollouts. It saves episode metrics and `latest.pkl`, including networks, optimizers, replay, random state, and counters. Resume with `--resume outputs/my_task/latest.pkl`.
+
+Add `--evaluate 20 --resume outputs/my_task/latest.pkl` to evaluate the learned critic. To evaluate a fixed execution length, use `--evaluate 20 --fixed-k 50`. Results are written to `evaluation.json`.
+
+## Included example: Piper with π₀.₅
+
+The Piper adapter converts six joint coordinates and a gripper command, synchronizes two RGB views with feedback, and uses ROS. Install the Piper ROS driver and OpenPI client in addition to the core dependencies. Copy `configs/real_robot/piper.example.yaml`, then fill in your ROS topics, joint limits, offsets, and camera crops. The command topic in this example expects Piper raw units.
+
+In OpenPI's model environment, serve a task-finetuned checkpoint:
 
 ```bash
 PYTHONPATH=/path/to/ExRL /path/to/openpi/.venv/bin/python \
   -m real_robot.serve_policy --checkpoint /path/to/pi05_checkpoint \
-  --prompt "Stack the cube on top of the other cube." --port 8000
+  --prompt "Stack the cube on the other cube." --port 8000
 ```
 
-The server uses the two RGB views and 7-dimensional Piper state from pretraining, predicts 50 actions, and applies the checkpoint's quantile normalization and state-relative joint transform. It accepts a per-request seed so training and evaluation can maintain independent sampling streams. Use the task's actual prompt and the complete checkpoint, including `assets/`.
-
-Copy `configs/real_robot/robot.example.yaml` to a local YAML. Set the ROS image, wrist-image, state, and command topics; joint offsets; joint limits; and optional image crops. The example command topic expects Piper raw coordinates. Confirm that your controller uses the same units before enabling commands. The adapter rejects missing limits, stale observations, and camera/state timestamps that are too far apart.
-
-Use the base checkpoint's `norm_stats.json`. The action representation is configured per task; in `state_delta` mode, the first six action coordinates are relative to the current state, while the gripper coordinate remains absolute.
-
-Check the cameras, state, and policy connection without publishing actions:
+Then use `configs/real_robot/piper_policy.example.yaml` as the policy adapter and one of the four task recipes, for example:
 
 ```bash
 python -m real_robot.train \
   --config configs/real_robot/stack_cube.yaml \
-  --robot robot.local.yaml --normalization /path/to/norm_stats.json \
-  --host localhost --port 8000 --check
+  --robot piper.local.yaml --policy configs/real_robot/piper_policy.example.yaml \
+  --normalization /path/to/norm_stats.json --output outputs/stack_cube
 ```
 
-## Train
+The example tasks have one stage for stacking/insertion, three for folding, and five for organization. Set `episode_seconds` to a suitable task budget for your setup, accounting for both control and model-inference time.
 
-```bash
-python -m real_robot.train \
-  --config configs/real_robot/stack_cube.yaml \
-  --robot robot.local.yaml --normalization /path/to/norm_stats.json \
-  --host localhost --port 8000 --output outputs/stack_cube
-```
-
-Reset the scene before each episode and enter `start`. During execution, enter `s` for a completed stage, `f` for failure, or `q` to end the session. Stage labels are timestamped independently of policy inference. In multi-stage tasks, the last stage marks success. Scene resets and robot enable/disable remain under the operator's control.
-
-The task YAML files specify the prompt, episode budget, warmup, update schedule, and reward. Stack cube and power insertion have one stage, clothing folding has three, and parts organization has five. Checkpoints include the critic, target network, optimizers, replay, RNG, and counters. Continue with `--resume outputs/stack_cube/latest.pkl`.
-
-## Evaluate
-
-Add `--evaluate 20 --resume outputs/stack_cube/latest.pkl` to evaluate the learned critic without updates. To evaluate the base policy with a fixed execution length, use `--evaluate 20 --fixed-k 50` instead. Results are saved as episode records in `evaluation.json`.
-
-The hardware adapter is specific to Piper and the stated message conventions. To use another robot, implement the same observation and command interface while retaining the collector and learner. Automated release checks use simulated robot inputs and do not operate hardware.
+See [generalist base-policy training](generalist_pretraining.md) for the Piper demonstration format and fine-tuning code. Automated integration tests use software inputs and do not operate hardware.

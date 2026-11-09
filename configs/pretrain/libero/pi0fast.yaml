@@ -1,0 +1,8 @@
+defaults:
+- ../openpi_defaults.yaml
+name: exrl_pi0fast_libero
+base_policy: pi0fast
+training:
+  num_train_steps: 10000
+  batch_size: 32
+  save_interval: 1000

@@ -4,6 +4,7 @@ from pathlib import Path
 import pickle
 import numpy as np
 from exrl.pixel.training import Replay, make_agent, restore, save, stack_rows
+from real_robot.interfaces import policy_rng_state, restore_policy_rng
 
 
 def train(collector, agent, config, output, resume=None):
@@ -20,18 +21,21 @@ def train(collector, agent, config, output, resume=None):
             "chunk_size",
             "discount",
             "stages",
-            "reward",
+            "control_hz",
+            "episode_seconds",
+            "camera_keys",
+            "action_state_indices",
             "image_size",
             "action_mode",
             "learner",
         ):
-            if payload["config"][key] != config[key]:
+            if payload["config"].get(key) != config.get(key):
                 raise ValueError(f"Cannot resume with a changed {key}")
         restore(payload, agent)
         replay, counters = payload["replay"], payload["counters"]
         rng.bit_generator.state = payload["rng"]
         if payload.get("policy_rng") is not None:
-            collector.policy.restore_rng(payload["policy_rng"])
+            restore_policy_rng(collector.policy, payload["policy_rng"])
 
     def update(count):
         from flax.core import freeze
@@ -79,7 +83,7 @@ def train(collector, agent, config, output, resume=None):
                 counters,
                 rng,
                 config,
-                policy_rng=collector.policy.rng_state(),
+                policy_rng=policy_rng_state(collector.policy),
             )
     finally:
         save(
@@ -89,5 +93,5 @@ def train(collector, agent, config, output, resume=None):
             counters,
             rng,
             config,
-            policy_rng=collector.policy.rng_state(),
+            policy_rng=policy_rng_state(collector.policy),
         )

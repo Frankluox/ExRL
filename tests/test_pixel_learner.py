@@ -9,8 +9,8 @@ from flax.core import freeze
 from real_robot.training import make_agent, save, restore, Replay, stack_rows
 
 
-@pytest.mark.parametrize("actor", [False, True])
-def test_pixel_update_and_resume(tmp_path, actor):
+@pytest.mark.parametrize("actor,dimensions", [(False, (7, 7)), (True, (7, 7)), (False, (3, 2))])
+def test_pixel_update_and_resume(tmp_path, actor, dimensions):
     import pickle
 
     cfg = dict(
@@ -32,10 +32,11 @@ def test_pixel_update_and_resume(tmp_path, actor):
             latent_dim=8,
         ),
     )
+    state_dim, action_dim = dimensions
     obs = dict(
         pixels=np.zeros((16, 16, 3, 1), np.uint8),
-        state=np.zeros((7, 1), np.float32),
-        actions=np.zeros((3, 7), np.float32),
+        state=np.zeros((state_dim, 1), np.float32),
+        actions=np.zeros((3, action_dim), np.float32),
     )
     agent = make_agent(cfg, obs)
     batch = freeze(

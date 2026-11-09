@@ -1,4 +1,13 @@
-# Pretraining DP and ACT
+# Base-policy training
+
+| Setting | Included training path |
+| --- | --- |
+| Robomimic | DP and ACT from demonstrations, described below |
+| Adroit | U-Net DP; [data and training](adroit.md) |
+| LIBERO | OpenPI and Cosmos task fine-tuning; [guide](generalist_pretraining.md) |
+| Real robot | π₀.₅ data transforms and a Piper fine-tuning example; [guide](generalist_pretraining.md) |
+
+## Robomimic demonstrations
 
 Prepare the low-dimensional demonstrations first:
 

@@ -1,4 +1,4 @@
-"""Connect to an OpenPI WebSocket policy server."""
+"""Optional Piper / OpenPI policy adapter."""
 
 from __future__ import annotations
 
@@ -51,3 +51,14 @@ class PolicyClient:
         ):
             raise ValueError("Policy server returned an invalid action chunk")
         return actions[: self.chunk_size, :7].copy()
+
+
+def make_piper_policy(options, task):
+    return PolicyClient(
+        host=options.get("host", "localhost"),
+        port=options.get("port", 8000),
+        prompt=task["prompt"],
+        chunk_size=task["chunk_size"],
+        seed=task["seed"],
+        action_mode=task["action_mode"],
+    )

@@ -21,6 +21,10 @@ export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 Install [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO) and [OpenPI](https://github.com/Physical-Intelligence/openpi) from their upstream repositories. Follow OpenPI's own installation instructions for its model environment. Do not install this repository's bundled packages into that model environment.
 
+## Train or obtain the base policy
+
+See [generalist pretraining](generalist_pretraining.md) for the LIBERO data converters, OpenPI/Cosmos training code, and model-specific recipes. The paper uses released π₀ LIBERO weights, while the other policies are task-finetuned.
+
 ## Start the base-policy server
 
 Use a task-finetuned OpenPI checkpoint with its `params/` and `assets/` directories. Start the server using OpenPI's Python, with ExRL on `PYTHONPATH`:

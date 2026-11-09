@@ -1,0 +1,13 @@
+defaults:
+- ../openpi_defaults.yaml
+benchmark: real_robot
+data_factory: exrl.pretraining.piper:PiperData
+data_options: {}
+name: exrl_pi05_piper
+repo_id: local/piper_task
+prompt: Stack the cube on the other cube.
+training:
+  num_train_steps: 900
+  batch_size: 32
+  save_interval: 300
+  fsdp_devices: 4

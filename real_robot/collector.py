@@ -6,33 +6,20 @@ import time
 import numpy as np
 
 from real_robot.observations import critic_observation
-from real_robot.rewards import staged_time_cost
+from real_robot.rewards import PhysicalDeadline, staged_time_cost
 
 
-def transition_return(config, start, end, action_times, events, failure=None):
+def transition_return(config, start, end, events, failure=None):
+    """Charge elapsed time, weighted by the number of unfinished stages."""
     gamma, stages = float(config["discount"]), int(config["stages"])
     completed = sum(t <= start for t in events)
     offsets = [t - start for t in events if start < t <= end]
-    if config["reward"] == "elapsed_time":
-        reward, discount = staged_time_cost(
-            end - start, stages, completed, offsets, gamma, 1.0 / config["control_hz"]
-        )
-    else:
-        count = len(action_times)
-        discount = gamma**count
-        if config["reward"] == "stage_bonus":
-            reward = sum(
-                gamma ** max(0, np.searchsorted(action_times, t) - 1)
-                for t in events
-                if start < t <= end
-            )
-        elif config["reward"] == "step_cost":
-            success = len(events) == stages and events[-1] <= end
-            costly_steps = max(0, count - int(success))
-            reward = -costly_steps if gamma == 1 else -(1 - gamma**costly_steps) / (1 - gamma)
-        else:
-            raise ValueError("Unknown reward scheme")
+    reward, discount = staged_time_cost(
+        end - start, stages, completed, offsets, gamma, 1.0 / config["control_hz"]
+    )
     if failure is not None and config.get("absorbing_failure", False):
+        if gamma == 1:
+            raise ValueError("Absorbing failure costs require discount < 1")
         remaining = stages - sum(t <= failure for t in events)
         reward -= discount * remaining / (1 - gamma)
     return float(reward), float(discount)
@@ -44,16 +31,25 @@ class Collector:
         self.config, self.stats, self.clock = config, stats, clock
 
     def encode(self, frame, actions):
+        if np.asarray(actions).ndim != 2 or len(actions) != self.config["chunk_size"]:
+            raise ValueError("The policy must return exactly chunk_size primitive actions")
         return critic_observation(
-            frame, actions, self.stats, self.config["image_size"], self.config["action_mode"]
+            frame,
+            actions,
+            self.stats,
+            self.config["image_size"],
+            self.config["action_mode"],
+            self.config.get("camera_keys", ["image"]),
+            self.config.get("action_state_indices", []),
         )
 
     def rollout(self, select_length):
         self.operator.start_episode()
         frame = self.robot.observe()
         start = frame["time"]
-        deadline = start + self.config.get("episode_seconds", float("inf"))
-        step_limit = self.config.get("episode_steps", float("inf"))
+        timer = PhysicalDeadline(self.config["episode_seconds"], self.clock.monotonic)
+        timer.start(start)
+        deadline = timer.deadline
         period = 1 / self.config["control_hz"]
         chunk = self.policy.predict(frame)
         observation = self.encode(frame, chunk)
@@ -70,7 +66,7 @@ class Collector:
                         raise KeyboardInterrupt
                     if failure is not None or len(events) >= self.config["stages"]:
                         break
-                    if self.clock.monotonic() >= deadline or steps >= step_limit:
+                    if timer.expired():
                         break
                     self.robot.command(action)
                     issued.append(self.clock.monotonic())
@@ -85,7 +81,7 @@ class Collector:
                 success = len(events) >= self.config["stages"]
                 failed = failure is not None and failure <= deadline
                 terminal = success or failed
-                timeout = next_frame["time"] >= deadline or steps >= step_limit
+                timeout = next_frame["time"] >= deadline
                 reward_end = min(next_frame["time"], deadline)
                 if success:
                     reward_end = min(reward_end, events[self.config["stages"] - 1])
@@ -95,7 +91,6 @@ class Collector:
                     self.config,
                     frame["time"],
                     max(frame["time"], reward_end),
-                    issued,
                     events,
                     failure if failed else None,
                 )

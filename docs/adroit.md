@@ -26,11 +26,11 @@ python -m exrl.adroit.prepare_data \
 If the dataset is not installed, obtain it with Minari first, or omit `--no-download` to let Minari fetch it. The conversion writes `data/adroit/door/expert_v2_robomimic.hdf5`.
 
 ```bash
-python pretrain.py --config configs/pretrain/adroit_dp.yaml \
+python pretrain.py --config configs/pretrain/adroit/door_dp.yaml \
   --data data/adroit/door --output models/adroit_door
 ```
 
-Set `--set task=hammer` or `--set task=pen` and use the corresponding data directory for the other two short-training recipes. Relocate uses `--set task=relocate --set training.num_epochs=10`; the other tasks use two epochs. Each epoch contains 1,000 updates. Checkpoints include the U-Net architecture and normalization statistics, so retain the complete `.pth` file.
+Use `hammer_dp.yaml`, `pen_dp.yaml`, or `relocate_dp.yaml` in the same directory for the other tasks, with the matching data directory. Relocate uses ten epochs; the other tasks use two epochs. Each epoch contains 1,000 updates. Checkpoints include the U-Net architecture and normalization statistics, so retain the complete `.pth` file.
 
 ## Online adaptation
 

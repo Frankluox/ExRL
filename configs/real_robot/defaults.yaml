@@ -2,10 +2,9 @@ seed: 42
 chunk_size: 50
 control_hz: 20
 image_size: 128
-action_mode: state_delta
+action_mode: absolute
 discount: 0.997
 stages: 1
-reward: elapsed_time
 episodes: 200
 replay_capacity: 100000
 batch_size: 256
@@ -36,7 +35,6 @@ learner:
   critic_use_layer_norm: false
   actor_use_layer_norm: false
   num_qs: 10
-  num_cameras: 2
   target_critic_subsample_size: 2
   critic_reduction: min
   target_policy_mode: q_greedy
@@ -48,3 +46,5 @@ learner:
   random_crop: true
   color_jitter: false
   aug_next: true
+camera_keys:
+- image

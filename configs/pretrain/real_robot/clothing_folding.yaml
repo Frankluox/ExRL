@@ -1,0 +1,22 @@
+defaults:
+- pi05.yaml
+repo_id: local/clothing_folding
+prompt: Fold the clothing.
+training:
+  num_train_steps: 10000
+  batch_size: 16
+  save_interval: 1000
+  fsdp_devices: 1
+  trainable: action_expert
+  ema_decay: null
+learning_rate:
+  warmup_steps: 1000
+  peak_lr: 2.5e-05
+  decay_steps: 30000
+  decay_lr: 2.5e-06
+optimizer:
+  b1: 0.9
+  b2: 0.95
+  eps: 1.0e-08
+  weight_decay: 1.0e-10
+  clip_gradient_norm: 1.0

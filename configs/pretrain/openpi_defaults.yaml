@@ -1,0 +1,23 @@
+backend: openpi
+benchmark: libero
+base_policy: pi05
+name: exrl_pi05_libero
+repo_id: local/libero_task57
+seed: 42
+chunk_size: 50
+training:
+  num_train_steps: 50
+  batch_size: 128
+  num_workers: 0
+  save_interval: 50
+  log_interval: 10
+  fsdp_devices: 1
+  trainable: all
+  ema_decay: 0.999
+learning_rate:
+  warmup_steps: 10000
+  peak_lr: 5.0e-05
+  decay_steps: 1000000
+  decay_lr: 5.0e-05
+optimizer:
+  clip_gradient_norm: 1.0

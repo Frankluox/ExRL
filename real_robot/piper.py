@@ -11,7 +11,7 @@ import threading
 import time
 import numpy as np
 
-from real_robot.observations import action_to_raw, state_from_raw
+from real_robot.piper_coordinates import action_to_raw, state_from_raw
 
 
 class PiperRobot:
@@ -123,3 +123,7 @@ class PiperRobot:
         for subscriber in self.subscribers:
             subscriber.unregister()
         self.publisher.unregister()
+
+
+def make_robot(options, task):
+    return PiperRobot(options)

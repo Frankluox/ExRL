@@ -33,54 +33,14 @@ class SeededPolicy:
 
 
 def make_config(asset_id, prompt, action_mode="state_delta"):
-    import dataclasses
-    from openpi import transforms as t
     from openpi.models import pi0_config
     from openpi.training import config as c
-
-    @dataclasses.dataclass(frozen=True)
-    class PiperInputs(t.DataTransformFn):
-        def __call__(self, data):
-            result = dict(
-                state=np.asarray(data["observation/state"], dtype=np.float32),
-                image=dict(
-                    base_0_rgb=data["observation/image"],
-                    left_wrist_0_rgb=data["observation/wrist_image"],
-                    right_wrist_0_rgb=np.zeros_like(data["observation/image"]),
-                ),
-                image_mask=dict(
-                    base_0_rgb=np.True_, left_wrist_0_rgb=np.True_, right_wrist_0_rgb=np.False_
-                ),
-            )
-            for key in ("actions", "prompt"):
-                if key in data:
-                    result[key] = data[key]
-            return result
-
-    @dataclasses.dataclass(frozen=True)
-    class PiperOutputs(t.DataTransformFn):
-        def __call__(self, data):
-            return dict(actions=np.asarray(data["actions"][:, :7], dtype=np.float32))
-
-    @dataclasses.dataclass(frozen=True)
-    class PiperData(c.DataConfigFactory):
-        def create(self, assets_dirs, model_config):
-            group = t.Group(inputs=[PiperInputs()], outputs=[PiperOutputs()])
-            if action_mode == "state_delta":
-                mask = t.make_bool_mask(6, -1)
-                group = group.push(inputs=[t.DeltaActions(mask)], outputs=[t.AbsoluteActions(mask)])
-            return c.DataConfig(
-                repo_id=asset_id,
-                asset_id=asset_id,
-                use_quantile_norm=True,
-                data_transforms=group,
-                model_transforms=c.ModelTransformFactory(default_prompt=prompt)(model_config),
-            )
+    from exrl.pretraining.piper import PiperData
 
     return c.TrainConfig(
         name="exrl_pi05_piper",
         model=pi0_config.Pi0Config(pi05=True, action_dim=32, action_horizon=50),
-        data=PiperData(),
+        data=PiperData(repo_id=asset_id, prompt=prompt, action_mode=action_mode),
     )
 
 

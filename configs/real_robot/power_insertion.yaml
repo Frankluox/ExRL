@@ -1,9 +1,8 @@
 defaults:
-- defaults.yaml
+- piper_defaults.yaml
 task: power_insertion
 prompt: Insert the plug into the power strip.
-episode_steps: 450
-reward: step_cost
+episode_seconds: 22.5
 warmup_episodes: 30
 warmup_transitions: 1
 warmup_updates: 5000

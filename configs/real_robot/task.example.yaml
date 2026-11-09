@@ -1,0 +1,5 @@
+defaults:
+- defaults.yaml
+task: custom_task
+prompt: Complete the manipulation task.
+episode_seconds: 30

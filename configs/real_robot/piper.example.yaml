@@ -1,0 +1,20 @@
+# Piper ROS adapter; fill in controller limits before use.
+factory: real_robot.piper:make_robot
+options:
+  image_topic: /camera/color/image_raw
+  wrist_topic: /wrist_camera/color/image_raw
+  state_topic: /piper/joint_states
+  action_topic: /piper/joint_commands
+  joint_offset:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  joint_limits: null
+  image_crop: null
+  wrist_image_crop: null
+  max_age: 0.5
+  max_skew: 0.1
+  observation_timeout: 5

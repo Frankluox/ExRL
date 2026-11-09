@@ -1,0 +1,5 @@
+defaults:
+- ../adroit_dp.yaml
+task: pen
+training:
+  num_epochs: 2

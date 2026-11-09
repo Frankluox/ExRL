@@ -1,0 +1,5 @@
+defaults:
+- ../adroit_dp.yaml
+task: relocate
+training:
+  num_epochs: 10

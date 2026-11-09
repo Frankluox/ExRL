@@ -1,0 +1,4 @@
+factory: real_robot.policy:make_piper_policy
+options:
+  host: localhost
+  port: 8000
