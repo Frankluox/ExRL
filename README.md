@@ -12,9 +12,9 @@
   </a>
 </p>
 
-## Overview
+Accompanying codebase for “ExRL: Sample-Efficient Online Adaptation of Long-Chunk Policies via Execution Length Control”.
 
-Adapting pretrained robot policies with reinforcement learning can require substantial interaction data, especially when long action chunks make the action space high-dimensional. ExRL addresses this challenge by learning **how long to execute each predicted action chunk before replanning**, enabling sample-efficient adaptation through a small discrete decision space. Across simulation and real robots, ExRL substantially improves success rates with limited interaction, including for π₀.₅ on contact-rich and long-horizon manipulation tasks.
+Adapting pretrained robot policies with reinforcement learning can require substantial interaction data, especially when long action chunks make the action space high-dimensional. ExRL addresses this challenge by learning how long to execute each predicted action chunk before replanning, enabling sample-efficient adaptation through a small discrete decision space. Across simulation and real robots, ExRL substantially improves success rates with limited interaction, including for π₀.₅ on contact-rich and long-horizon manipulation tasks.
 
 ## Getting started
 
@@ -38,10 +38,10 @@ The [baseline guide](docs/baselines.md) describes the comparison methods and the
 
 The shared defaults work well across most tasks; start with them before tuning.
 
-- **Parallel environments.** When increasing `n_envs`, increase gradient updates proportionally to preserve the effective update-to-data ratio (UTD). The Robomimic launcher does this automatically, so keep the YAML `utd` fixed; see [UTD and parallelism](docs/robomimic.md#utd-and-parallelism).
-- **Real-robot UTD.** A larger UTD can accelerate early learning, but may reduce final performance. Start from the task recipe and increase it only when faster initial adaptation is important.
-- **Network width.** For more complex tasks, try hidden layers of width **1024 or 2048**.
-- **Long-horizon tasks.** A discount factor of **0.999** often works better than the default 0.997 (`gamma` in Robomimic configs, `discount` in LIBERO and real-robot configs).
+- On real robots, a larger UTD can accelerate early learning, but may reduce final performance.
+- For more complex tasks, try hidden layers of width **1024 or 2048**.
+- For long-horizon tasks, a discount factor of **0.999** often works better than the default 0.997 (`gamma` in Robomimic configs, `discount` in LIBERO and real-robot configs).
+- After changing the reward function or scale, check that the critic target clipping range still matches the expected returns; the default range is `[-1000, 0]`.
 
 ## Acknowledgements
 
