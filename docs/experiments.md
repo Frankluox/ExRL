@@ -4,14 +4,14 @@ ExRL uses state observations on Lift, Can, Square, Transport, and Tool Hang. The
 
 ## Simulator versions
 
-Create separate environments for experiments requiring different simulator versions. Install the corresponding requirements file, then run `pip install -e .`.
+All Robomimic experiments use MuJoCo **3.3.5**. ExRL-Q, ExRL-SAC, online BC, and the baselines share the same environment; only Tool Hang needs a different Robosuite version. Install the corresponding requirements file, then run `pip install -e .`.
 
 | Experiments | Requirements file | MuJoCo | Robosuite |
 | --- | --- | --- | --- |
-| ExRL-Q, BC variants, and ACT ExRL-SAC on Lift / Can / Square | `requirements/robomimic-q.txt` | 3.3.5 | 1.4.1 |
-| DP ExRL-SAC on Lift / Can / Square | `requirements/robomimic-sac.txt` | 3.1.6 | 1.4.1 |
-| Transport | `requirements/robomimic-q.txt` | 3.3.5 | 1.4.1 |
+| Lift / Can / Square / Transport | `requirements/robomimic.txt` | 3.3.5 | 1.4.1 |
 | Tool Hang | `requirements/tool-hang.txt` | 3.3.5 | 1.5.1 |
+
+**Tool Hang requires Robosuite 1.5.1.** In our experiments, base-policy training under Robosuite 1.4.1 produced policies with 0% success on this task. Use a separate Tool Hang environment with 1.5.1 for base-policy training, RL, and evaluation.
 
 The simulator versions are also recorded in each YAML configuration. Add `--check` to the training command to check the data, checkpoint, and installation before training.
 

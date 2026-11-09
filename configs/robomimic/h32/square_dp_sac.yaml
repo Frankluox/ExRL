@@ -4,7 +4,7 @@ task: square
 base_policy: dp
 chunk_size: 32
 runtime:
-  mujoco: 3.1.6
+  mujoco: 3.3.5
   robosuite: 1.4.1
 diffusion_training_steps: 100
 algorithm: sac

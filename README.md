@@ -27,12 +27,12 @@ Use Linux, Python 3.10, and a CUDA GPU. From the repository root:
 ```bash
 conda create -n exrl python=3.10
 conda activate exrl
-pip install -r requirements/robomimic-q.txt
+pip install -r requirements/robomimic.txt
 pip install -e .
 export MUJOCO_GL=egl
 ```
 
-This environment supports the Can example. Follow the benchmark guides for Tool Hang, Adroit, LIBERO, and their simulator dependencies.
+Lift, Can, Square, and Transport share this environment across ExRL variants and baselines. All Robomimic tasks use MuJoCo 3.3.5. **Tool Hang requires Robosuite 1.5.1** instead of 1.4.1: use `requirements/tool-hang.txt` in a separate environment and read the [version note](docs/experiments.md#simulator-versions). Adroit and LIBERO have their own installation guides.
 
 ### 1. Prepare demonstrations
 
@@ -75,7 +75,7 @@ python evaluate.py \
 
 Use the run directory printed by training. For online-BC experiments, evaluation also restores the adapted base policy.
 
-## ExRL variants and baselines
+## ExRL variants
 
 Select a different configuration with the same training command:
 
@@ -87,7 +87,6 @@ Select a different configuration with the same training command:
 | `configs/robomimic/can_dp_online_bc.yaml` | ExRL-Q and online BC of the base policy |
 | `configs/robomimic/can_act_demo_bc.yaml` | ExRL-Q and BC with online successes and demonstrations |
 | `configs/robomimic/can_dp_demo.yaml` | ExRL-Q with demonstrations in RL replay |
-| `configs/baselines/robomimic/can_dp_resfit.yaml` | ResFiT |
 
 ACT runs take a LeRobot policy directory through `--base-policy`. Robomimic configurations use 50-action chunks by default; 32-action recipes are in `configs/robomimic/h32/`. Shared settings are in `configs/defaults/`, with task-specific changes in each recipe.
 
@@ -95,7 +94,23 @@ ACT runs take a LeRobot policy directory through `--base-policy`. Robomimic conf
 python train.py --config configs/robomimic/can_dp_q.yaml --print-config
 ```
 
-Use `--seed` and `--set KEY=VALUE` to change settings without editing the YAML. The [baseline guide](docs/baselines.md) lists the combinations implemented for each method and their evaluation commands.
+Use `--seed` and `--set KEY=VALUE` to change settings without editing the YAML.
+
+## Baselines
+
+Baselines use the same `train.py` entry point. For DP on Can, select a file under `configs/baselines/robomimic/` with `--config`:
+
+| Baseline | Configuration |
+| --- | --- |
+| DSRL | [can_dp_dsrl.yaml](configs/baselines/robomimic/can_dp_dsrl.yaml) |
+| Policy Decorator | [can_dp_policy_decorator.yaml](configs/baselines/robomimic/can_dp_policy_decorator.yaml) |
+| PA-RL | [can_dp_parl.yaml](configs/baselines/robomimic/can_dp_parl.yaml) |
+| ResFiT | [can_dp_resfit.yaml](configs/baselines/robomimic/can_dp_resfit.yaml) |
+| OGPO | [can_dp_ogpo.yaml](configs/baselines/robomimic/can_dp_ogpo.yaml) |
+| DICE-RL | [can_dp_dice.yaml](configs/baselines/robomimic/can_dp_dice.yaml) |
+| Online BC without RL | [can_dp_online_bc.yaml](configs/baselines/robomimic/can_dp_online_bc.yaml) |
+
+The [baseline guide](docs/baselines.md) lists supported tasks and base policies, demonstration requirements, and evaluation commands.
 
 ## Real-robot adaptation
 

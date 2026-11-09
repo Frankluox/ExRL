@@ -9,6 +9,8 @@
 
 ## Robomimic demonstrations
 
+Use the [Robomimic environment](experiments.md#simulator-versions) for both base-policy training and evaluation. Tool Hang requires **Robosuite 1.5.1**; the other tasks use 1.4.1. All use MuJoCo 3.3.5.
+
 Prepare the low-dimensional demonstrations first:
 
 ```bash
