@@ -12,8 +12,6 @@
   </a>
 </p>
 
-Accompanying codebase for “ExRL: Sample-Efficient Online Adaptation of Long-Chunk Policies via Execution Length Control”.
-
 Adapting pretrained robot policies with reinforcement learning can require substantial interaction data, especially when long action chunks make the action space high-dimensional. ExRL addresses this challenge by learning how long to execute each predicted action chunk before replanning, enabling sample-efficient adaptation through a small discrete decision space. Across simulation and real robots, ExRL substantially improves success rates with limited interaction, including for π₀.₅ on contact-rich and long-horizon manipulation tasks.
 
 ## Getting started
@@ -36,8 +34,7 @@ The [baseline guide](docs/baselines.md) describes the comparison methods and the
 
 ## Tips for hyperparameter tuning
 
-The shared defaults work well across most tasks; start with them before tuning.
-
+- The shared defaults work well across most tasks; start with them before tuning.
 - On real robots, a larger UTD can accelerate early learning, but may reduce final performance.
 - For more complex tasks, try hidden layers of width **1024 or 2048**.
 - For long-horizon tasks, a discount factor of **0.999** often works better than the default 0.997 (`gamma` in Robomimic configs, `discount` in LIBERO and real-robot configs).
@@ -45,4 +42,4 @@ The shared defaults work well across most tasks; start with them before tuning.
 
 ## Acknowledgements
 
-We build on [DSRL](https://github.com/ajwagen/dsrl), [DPPO](https://github.com/irom-princeton/dppo), Robomimic, LeRobot, Stable-Baselines3, jaxrl2, OpenPI, and Cosmos Policy. See [THIRD_PARTY.md](THIRD_PARTY.md) for upstream sources and licenses.
+The codebase builds on [DSRL](https://github.com/ajwagen/dsrl), [DPPO](https://github.com/irom-princeton/dppo), Robomimic, LeRobot, Stable-Baselines3, jaxrl2, OpenPI, and Cosmos Policy. Many thanks to the authors and maintainers for their excellent work and for making it openly available!
