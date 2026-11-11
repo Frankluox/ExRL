@@ -3,7 +3,7 @@
 # ExRL: Sample-Efficient Online Adaptation of Long-Chunk Policies via Execution Length Control
 
 <h2 align="center">
-  [<a href="https://exrl-project.github.io">Website</a>] &nbsp;&nbsp; [<a href="https://exrl-project.github.io/paper.pdf">Paper</a>]
+  [<a href="https://exrl-project.github.io">Website</a>] &nbsp;&nbsp; [<a href="https://arxiv.org/pdf/2611.13482">Paper</a>] &nbsp;&nbsp; [<a href="https://arxiv.org/abs/2611.13482">arXiv</a>]
 </h2>
 
 </div>
